@@ -1,0 +1,9 @@
+/* Atur font Inter sebagai default */
+html {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Sesuaikan Vuetify agar memakai font ini juga */
+.v-application {
+  font-family: 'Inter', sans-serif !important;
+}
