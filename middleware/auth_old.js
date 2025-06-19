@@ -41,10 +41,6 @@ export async function getUser() {
   }
 }
 
-// export function isAuthenticated() {
-//   return typeof window !== "undefined" && !!localStorage.getItem("token");
-// }
-
 export function isAuthenticated() {
   if (typeof window === "undefined") return false; // Pastikan berjalan di client-side
 
