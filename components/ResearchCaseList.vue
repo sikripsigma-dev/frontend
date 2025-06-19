@@ -3,13 +3,14 @@
     <v-row>
       <!-- Sidebar Kiri: Daftar Perusahaan -->
       <v-col cols="12" md="4">
-        <template v-if="store.loading">
+        <!-- Loading -->
+        <template v-if="loading">
           <v-skeleton-loader v-for="i in 3" :key="i" type="card" class="mb-3" boilerplate />
         </template>
 
-        <!-- Notifikasi Error -->
+        <!-- Error -->
         <v-alert
-          v-if="store.error"
+          v-if="error"
           type="error"
           variant="tonal"
           prominent
@@ -21,21 +22,21 @@
           <strong>Oops!</strong> Failed to fetch research cases. Please try again later.
         </v-alert>
 
+        <!-- Data List -->
         <template v-else>
           <v-card
             v-for="caseItem in paginatedCases"
             :key="caseItem.id"
             class="mb-3 company-card"
-            @click="store.selectCompany(caseItem)"
-            :class="{ 'selected-company': store.selectedCompany?.id === caseItem.id }"
+            @click="selectCompany(caseItem)"
+            :class="{ 'selected-company': selectedCase?.id === caseItem.id }"
             elevation="2"
           >
             <v-card-title class="d-flex align-center">
               <v-avatar size="40" class="mr-3">
-              <v-img v-if="caseItem.company.logo" :src="caseItem.company.logo" alt="Company Logo" />
-              <v-icon v-else size="40" color="grey">mdi-domain</v-icon>
-            </v-avatar>
-
+                <v-img v-if="caseItem.company.logo" :src="caseItem.company.logo" alt="Company Logo" />
+                <v-icon v-else size="40" color="grey">mdi-domain</v-icon>
+              </v-avatar>
               <span>{{ caseItem.company.Name }}</span>
             </v-card-title>
             <v-card-subtitle>{{ caseItem.title }}</v-card-subtitle>
@@ -64,14 +65,14 @@
 
       <!-- Detail Kanan -->
       <v-col cols="12" md="8">
-        <template v-if="store.loading">
+        <template v-if="loading">
           <v-skeleton-loader type="article" class="mb-3" boilerplate />
           <v-skeleton-loader type="paragraph" class="mb-3" boilerplate />
           <v-skeleton-loader type="button" boilerplate />
         </template>
 
         <v-alert
-          v-if="!store.selectedCompany"
+          v-if="!selectedCase"
           type="info"
           variant="tonal"
           prominent
@@ -87,18 +88,18 @@
           <v-card elevation="3" class="pa-4">
             <div class="sticky-header">
               <v-card-title class="d-flex justify-space-between align-center">
-                <h2>{{ store.selectedCompany.title }}</h2>
+                <h2>{{ selectedCase.title }}</h2>
                 <v-btn color="primary" class="mr-3" variant="flat">Apply Now</v-btn>
               </v-card-title>
               <v-card-subtitle>
-                <v-icon>mdi-domain</v-icon> {{ store.selectedCompany.company.Name }} |
-                <v-icon>mdi-map-marker</v-icon> {{ store.selectedCompany.company.Address }}
+                <v-icon>mdi-domain</v-icon> {{ selectedCase.company.Name }} |
+                <v-icon>mdi-map-marker</v-icon> {{ selectedCase.company.Address }}
               </v-card-subtitle>
               <v-divider />
             </div>
             <v-card-text>
               <h3>Description</h3>
-              <p>{{ store.selectedCompany.description }}</p>
+              <p>{{ selectedCase.description }}</p>
             </v-card-text>
           </v-card>
         </template>
@@ -107,35 +108,45 @@
   </v-container>
 </template>
 
-<script setup>
-import { computed, ref, onMounted } from "vue";
-import { useResearchCasesStore } from "@/stores/researchCases";
+<!-- <script setup>
+import { onMounted } from 'vue'
+import { useResearchCase } from '@/composables/useResearchCase'
 
-const store = useResearchCasesStore();
-const currentPage = ref(1);
-const itemsPerPage = 3;
+const {
+  loading,
+  error,
+  fetchResearchCases,
+  selectedCase,
+  selectCompany,
+  currentPage,
+  paginatedCases,
+  totalPages,
+} = useResearchCase()
 
 onMounted(() => {
-  store.fetchResearchCases(); // Fetch data saat pertama kali halaman dimuat
-});
+  fetchResearchCases()
+})
+</script> -->
 
-// Filtering Realtime Saat Mengetik
-const filteredCases = computed(() => {
-  if (!store.selectedLocation || store.selectedLocation === "Semua Lokasi") {
-    return store.researchCases; // Tampilkan semua jika lokasi kosong
-  }
-  return store.researchCases.filter(researchCase =>
-    researchCase.location.toLowerCase().includes(store.selectedLocation.toLowerCase())
-  );
-});
+<script setup>
+import { onMounted } from 'vue'
+import { useResearchCase } from '@/composables/useResearchCase'
 
-// Pagination untuk menampilkan hanya beberapa item
-const paginatedCases = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  return filteredCases.value.slice(start, start + itemsPerPage);
-});
+const {
+  loading,
+  error,
+  fetchResearchCases,
+  selectedCompany: selectedCase, // Renamed to match template
+  selectCompany,
+  currentPage,
+  paginatedCases,
+  totalPages,
+} = useResearchCase()
+
+onMounted(() => {
+  fetchResearchCases()
+})
 </script>
-
 
 <style scoped>
 .company-card {
