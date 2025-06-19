@@ -16,17 +16,21 @@
     </div>
   </v-container>
 
-  <v-container fluid class="d-flex justify-center">
+  <!-- <v-container fluid class="d-flex justify-center">
     <SearchBar />
   </v-container>
   <v-container fluid class="d-flex justify-center">
     <ResearchCaseList />
+  </v-container> -->
+  <v-container fluid class="d-flex justify-center">
+    <LatestResearchCase />
   </v-container>
 </template>
 
 <script>
   import SearchBar from '@/components/SearchBar.vue';
   import ResearchCaseList from '~/components/ResearchCaseList.vue';
+  import LatestResearchCase from '~/components/LatestResearchCase.vue';
 </script>
 
 <style scoped>

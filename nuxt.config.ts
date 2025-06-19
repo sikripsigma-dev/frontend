@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
-  pages: true, // ✅ Tambahkan ini untuk memastikan Nuxt mendeteksi folder pages
+  pages: true,
   modules: [
     '@nuxt/icon',
     '@nuxt/image',
@@ -23,4 +23,9 @@ export default defineNuxtConfig({
       'process.env.DEBUG': false,
     },
   },
+  runtimeConfig: {
+    public: {
+      apiBase: process.env.VITE_API_BASE_URL || 'http://localhost:3001',
+    }
+  }
 });

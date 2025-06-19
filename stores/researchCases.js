@@ -17,7 +17,7 @@ export const useResearchCasesStore = defineStore("researchCases", {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/research-cases`);
+        const response = await axios.get(`${API_BASE_URL}/api/research-case`);
 
         // Filter berdasarkan lokasi
         const filteredData =
