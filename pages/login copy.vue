@@ -10,7 +10,7 @@
             Platform skripsi berbasis studi kasus nyata
           </v-card-subtitle>
 
-          <v-form ref="form" @submit.prevent="handleLogin" lazy-validation>
+          <v-form ref="form" @submit.prevent="login" lazy-validation>
             <v-text-field
               v-model="email"
               label="Email"
@@ -83,36 +83,51 @@
   </v-container>
 </template>
 
-<script setup lang="ts">
-  import { ref } from 'vue'
-  import { useAuth } from '@/composables/useAuth'
-  import { useRouter } from 'vue-router'
+<script>
+export default {
+  layout: "auth",
+  data() {
+    return {
+      email: "",
+      password: "",
+      loading: false,
+      errorMessage: "",
+    };
+  },
+  methods: {
+    async login() {
+      this.loading = true;
+      this.errorMessage = "";
 
-  const email = ref('')
-  const password = ref('')
-  const loading = ref(false)
-  const errorMessage = ref('')
+      try {
+        const response = await fetch("http://localhost:3001/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: this.email, password: this.password }),
+        });
 
-  const { login } = useAuth()
-  const router = useRouter()
+        const data = await response.json();
 
-  const handleLogin = async () => {
-    loading.value = true
-    errorMessage.value = ''
+        if (!response.ok) {
+          throw new Error(data.error || "Login gagal");
+        }
 
-    try {
-      await login(email.value, password.value)
-      router.push('/')
-    } catch (error: any) {
-      errorMessage.value = error.message
-    } finally {
-      loading.value = false
-    }
-  }
+        localStorage.setItem("token", data.token);
+        this.$router.push("/");
+      } catch (error) {
+        this.errorMessage = error.message;
+      } finally {
+        this.loading = false;
+      }
+    },
 
-  const loginWithGoogle = () => {
-    window.location.href = 'http://localhost:3001/api/auth/google'
-  }
+    loginWithGoogle() {
+      // Arahkan ke endpoint Google OAuth dari backend
+      window.location.href = "http://localhost:3001/api/auth/google";
+    },
+  },
+};
 </script>
 
 <style scoped>

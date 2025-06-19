@@ -7,6 +7,6 @@
 
 <script setup>
 definePageMeta({
-  layout: "student",
+  layout: "profile",
 });
 </script>
