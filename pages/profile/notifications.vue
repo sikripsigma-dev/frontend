@@ -31,7 +31,7 @@
                   notif.read ? 'bg-grey-lighten-4' : 'bg-blue-lighten-5',
                 ]"
                 class="notification-item"
-                @click="markAsRead(notif)"
+                @click="markAsReadLocal(notif)"
               >
                 <v-list-item-content>
                   <v-list-item-title class="font-weight-medium text-body-1 mb-1">
@@ -63,45 +63,67 @@
     </v-container>
 </template>
   
-  <script setup>
-  import { ref, computed } from 'vue'
-  
-  definePageMeta({
-    layout: 'profile',
-  })
-  
-  const notifications = ref([
-    {
-      id: 1,
-      title: 'Pesan Baru dari Lil Grand',
-      message: 'Terima kasih pak!',
-      time: '09:24',
-      read: false,
-    },
-    {
-      id: 2,
-      title: 'Pengingat Jadwal',
-      message: 'Anda memiliki rapat dengan tim pukul 13.00 WIB',
-      time: '08:50',
-      read: true,
-    },
-    {
-      id: 3,
-      title: 'Update Status',
-      message: 'Proposal penelitian Anda telah disetujui',
-      time: 'Kemarin',
-      read: false,
-    },
-  ])
-  
-  const unreadCount = computed(() =>
-    notifications.value.filter((n) => !n.read).length
-  )
-  
-  function markAsRead(notif) {
-    notif.read = true
+<script setup>
+import { ref, computed } from 'vue'
+import { useNotificationService } from '@/composables/useNotification'
+
+definePageMeta({
+  layout: 'profile',
+})
+
+const { getNotifications, markAsRead } = useNotificationService()
+const notifications = ref([])
+
+const loadNotifications = async () => {
+  const { data, error } = await getNotifications()
+  if (data.value) {
+    notifications.value = data.value.notifications.map(n => ({
+      id: n.id,
+      title: getTitle(n.type),
+      message: n.message,
+      time: formatDate(n.created_at),
+      read: n.is_read,
+    }))
+  } else if (error.value) {
+    console.error('Gagal mengambil notifikasi:', error.value)
   }
-  </script>
+}
+
+const getTitle = (type) => {
+  switch (type) {
+    case 'apply':
+      return 'Pengajuan Studi Kasus'
+    case 'review':
+      return 'Tinjauan Laporan'
+    case 'weekly-report':
+      return 'Laporan Mingguan'
+    default:
+      return 'Notifikasi'
+  }
+}
+
+const formatDate = (isoString) => {
+  const d = new Date(isoString)
+  return d.toLocaleString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const unreadCount = computed(() =>
+  notifications.value.filter(n => !n.read).length
+)
+
+const markAsReadLocal = async (notif) => {
+  if (notif.read) return
+  notif.read = true
+  await markAsRead(notif.id)
+}
+
+loadNotifications()
+</script>
   
   <style scoped>
   .fill-height {

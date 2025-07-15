@@ -13,13 +13,13 @@
       <v-row justify="center">
         <v-col cols="12" md="8">
           <h1 class="text-h4 font-weight-bold mb-3">
-            🎓 Skripsi Gak Perlu Bingung Lagi!
+            Skripsi Gak Perlu Bingung Lagi!
           </h1>
           <p class="text-body-1 mb-2">
-            Skripsigma bantu kamu menemukan <strong>studi kasus skripsi</strong> dari perusahaan asli di Indonesia 🧳
+            Skripsigma bantu kamu menemukan <strong>studi kasus skripsi</strong> dari perusahaan asli di Indonesia
           </p>
           <p class="text-body-1 mb-6">
-            Terhubung langsung ke <strong>+150 studi kasus aktif</strong> dari berbagai sektor industri.
+            Terhubung langsung ke <strong>Banyak studi kasus aktif</strong> dari berbagai sektor industri.
           </p>
           <v-text-field
             prepend-inner-icon="mdi-email"
@@ -30,7 +30,7 @@
             style="max-width: 400px;"
           />
           <v-btn color="primary" rounded large>
-            🚀 Daftar Sekarang
+             Daftar Sekarang
           </v-btn>
           <p class="mt-4 text-caption">
             Sudah <strong>12.000+</strong> mahasiswa bergabung — 
@@ -43,7 +43,7 @@
     </v-container>
     <v-container>
         <!-- <SearchBar/> -->
-        <SearchBar v-model="searchQuery" :location="selectedLocation" />
+        <SearchBar/>
     </v-container> 
     <v-container>
         <!-- <ResearchCaseList/> -->
@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import SearchBar from '@/components/SearchBar.vue'
 import ResearchCaseList from '@/components/ResearchCaseList.vue'
-import { useResearchCase } from '@/composables/useResearchCase'
+import { useResearchCase } from '~/composables/useResearchCase_old'
 
 const {
   searchQuery,
