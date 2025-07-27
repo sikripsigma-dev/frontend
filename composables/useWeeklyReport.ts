@@ -7,6 +7,13 @@ export const useWeeklyReportService = () => {
         credentials: 'include',
         body: formData
       })
+    
+    const submitCompanyReport = (formData: FormData) =>
+      useFetch(() => `${config.public.apiBase}/api/weekly-report/company`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
   
     const getMyReports = () =>
       useFetch(() => `${config.public.apiBase}/api/weekly-report`, {
@@ -17,7 +24,12 @@ export const useWeeklyReportService = () => {
       useFetch(() => `${config.public.apiBase}/api/weekly-report/bysupervisor`, {
         credentials: 'include'
       })
+
+    const getReportsByCompany = () =>
+      useFetch(() => `${config.public.apiBase}/api/weekly-report/bycompany`, {
+        credentials: 'include'
+      })
   
-    return { submitReport, getMyReports, getReportsBySupervisor }
+    return { submitReport, submitCompanyReport, getMyReports, getReportsBySupervisor, getReportsByCompany }
   }
   
