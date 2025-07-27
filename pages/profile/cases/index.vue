@@ -34,9 +34,15 @@
                 <v-btn icon size="small" color="primary" @click="editStudiKasus(item)" variant="tonal">
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
-                <!-- <v-btn icon size="small" color="error" @click="hapusStudiKasus(item)" variant="tonal">
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn> -->
+                <v-btn
+                  icon
+                  size="small"
+                  :color="item.is_active ? 'green' : 'grey'"
+                  @click="ubahStatusStudiKasus(item)"
+                  variant="tonal"
+                >
+                  <v-icon>{{ item.is_active ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+                </v-btn>
               </div>
             </template>
 
@@ -57,6 +63,7 @@ import { ref, computed, watch } from 'vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useResearchCaseService } from '@/composables/useResearchCase'
 import { navigateTo } from '#app'
+import { useToast } from 'vue-toastification'
 
 definePageMeta({
   layout: 'profile',
@@ -70,8 +77,9 @@ const headers = [
   { title: 'Aksi', key: 'actions', sortable: false },
 ]
 
+const toast = useToast()
 const { user } = useDataUser()
-const { getByCompany, remove } = useResearchCaseService()
+const { getByCompany, remove, toggleActive } = useResearchCaseService()
 
 const researchCases = ref([])
 const pending = ref(false)
@@ -85,6 +93,22 @@ const fetchCases = async (companyId) => {
     researchCases.value = data.value?.research_cases || []
   }
   pending.value = false
+}
+
+const ubahStatusStudiKasus = async (item) => {
+  const newStatus = !item.is_active
+  try {
+    await toggleActive(item.id, newStatus)
+    toast.success(`Studi kasus berhasil di-${newStatus ? 'aktifkan' : 'nonaktifkan'}`)
+
+    // Refresh data
+    if (user.value?.company?.id) {
+      fetchCases(user.value.company.id)
+    }
+  } catch (err) {
+    toast.error('Gagal mengubah status studi kasus')
+    console.error('[ubahStatusStudiKasus]', err)
+  }
 }
 
 watch(() => user.value, (val) => {

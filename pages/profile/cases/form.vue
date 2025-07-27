@@ -146,24 +146,36 @@
   })
   
   const saveCase = async () => {
-    if (!formValid.value) return
-    pending.value = true
-  
-    try {
-      if (isEdit) {
-        await update(id, form.value)
-      } else {
-        await create({
-          ...form.value,
-          company_id: user.value.user.company.id
-        })
+  if (!formValid.value) return
+  pending.value = true
+
+  try {
+    if (isEdit) {
+      await update(id, form.value)
+    } else {
+      // Coba ambil company_id dari user
+      const companyId =
+        user.value?.user?.company?.id || user.value?.company?.id
+
+      if (!companyId) {
+        throw new Error(
+          'Gagal mendapatkan company_id. Pastikan user memiliki data perusahaan.'
+        )
       }
-      router.push('/profile/cases')
-    } catch (e) {
-      console.error('Gagal simpan:', e)
-    } finally {
-      pending.value = false
+
+      await create({
+        ...form.value,
+        company_id: companyId,
+      })
     }
+
+    router.push('/profile/cases')
+  } catch (e) {
+    console.error('Gagal simpan:', e)
+  } finally {
+    pending.value = false
   }
+}
+
   </script>
   

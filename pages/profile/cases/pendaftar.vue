@@ -101,13 +101,13 @@
               </v-chip>
             </template>
 
-            <template #item.actions_applicant="{ item }">
+            <!-- <template #item.actions_applicant="{ item }">
               <v-btn
                 icon
                 size="small"
                 color="green"
                 variant="tonal"
-                @click="reviewApplication(item.id, 'diterima')"
+                @click="reviewApplication(item.id, 'accepted')"
                 class="mr-1"
               >
                 <v-icon size="small">mdi-check</v-icon>
@@ -117,12 +117,51 @@
                 size="small"
                 color="red"
                 variant="tonal"
-                @click="reviewApplication(item.id, 'ditolak')"
+                @click="reviewApplication(item.id, 'rejected')"
               >
                 <v-icon size="small">mdi-close</v-icon>
               </v-btn>
-            </template>
+            </template> -->
 
+            <template #item.actions_applicant="{ item }">
+  <!-- Tombol Lihat Profil tetap muncul -->
+  <v-btn
+    icon
+    size="small"
+    color="primary"
+    variant="text"
+    @click="viewStudentProfile(item)"
+    class="mr-1"
+  >
+    <v-icon size="small">mdi-account-eye</v-icon>
+    <v-tooltip activator="parent" location="bottom">Lihat Profil</v-tooltip>
+  </v-btn>
+
+  <!-- Tombol aksi hanya muncul jika statusnya pending -->
+            <template v-if="item.status === 'pending'">
+                <v-btn
+                  icon
+                  size="small"
+                  color="green"
+                  variant="text"
+                  @click="reviewApplication(item.id, 'accepted')"
+                  class="mr-1"
+                >
+                  <v-icon size="small">mdi-check</v-icon>
+                  <v-tooltip activator="parent" location="bottom">Terima</v-tooltip>
+                </v-btn>
+                <v-btn
+                  icon
+                  size="small"
+                  color="red"
+                  variant="text"
+                  @click="reviewApplication(item.id, 'rejected')"
+                >
+                  <v-icon size="small">mdi-close</v-icon>
+                  <v-tooltip activator="parent" location="bottom">Tolak</v-tooltip>
+                </v-btn>
+              </template>
+            </template>
 
             <template #no-data>
               <v-alert
@@ -154,8 +193,7 @@ definePageMeta({
 
 const { user } = useDataUser()
 const { getByCompany } = useResearchCaseService()
-const { getByResearchCase } = useApplicationService()
-const { processApplication } = useApplicationService()
+const { getByResearchCase, processApplication } = useApplicationService()
 
 const researchCases = ref([])
 const pendingCases = ref(false)
@@ -180,10 +218,14 @@ const applicantHeaders = [
   { title: 'Aksi', key: 'actions_applicant', sortable: false, align: 'center' },
 ]
 
+// ✅ Update: pastikan user.id bisa diakses saat navigate
+const viewStudentProfile = (applicant) => {
+  navigateTo(`/profile/cases/${applicant.user.id}?application=${applicant.id}`)
+}
+
 const searchQuery = ref('')
 const selectedCaseTitle = ref('')
 
-// Fetch research cases
 watch(
   () => user.value,
   async (val) => {
@@ -211,13 +253,12 @@ const reviewApplication = async (applicationId, status) => {
   try {
     await processApplication(applicationId, status)
 
-    if (status === 'ditolak') {
+    if (status === 'rejected') {
       toast.error(`Mahasiswa ditolak untuk studi kasus "${selectedCaseTitle.value || '-'}"`)
     } else {
       toast.success(`Mahasiswa diterima untuk studi kasus "${selectedCaseTitle.value || '-'}"`)
     }
 
-    // Refresh ulang daftar pendaftar
     const selected = researchCases.value.find(c => c.title === selectedCaseTitle.value)
     if (selected) {
       await loadApplicants(selected.id, selected.title)
@@ -228,6 +269,7 @@ const reviewApplication = async (applicationId, status) => {
   }
 }
 
+// ✅ Update: tambahkan user di dalam mapping applicant
 const loadApplicants = async (researchCaseId, researchCaseTitle) => {
   pendingApplicants.value = true
   applicants.value = []
@@ -239,6 +281,7 @@ const loadApplicants = async (researchCaseId, researchCaseTitle) => {
     if (Array.isArray(data.value.applications)) {
       applicants.value = data.value.applications.map((a, index) => ({
         id: a.id,
+        user: a.user, // Penting agar bisa akses user.id saat view
         name: a.user?.name || '-',
         email: a.user?.email || '-',
         status: a.status,
@@ -262,17 +305,17 @@ const filteredCases = computed(() => {
 
 const statusColor = (status) => {
   switch (status) {
-    case 'diajukan' || 'menunggu':
-      return 'blue'
-    case 'diterima':
-      return 'green'
-    case 'ditolak':
-      return 'red'
-    default:
-      return 'grey'
+    case 'pending': return 'warning'
+    case 'accepted': return 'primary'
+    case 'confirmed': return 'success'
+    case 'declined': return 'error'
+    case 'rejected': return 'error'
+    case 'cancelled': return 'grey'
+    default: return 'grey'
   }
 }
 </script>
+
 
 
 <style scoped>
