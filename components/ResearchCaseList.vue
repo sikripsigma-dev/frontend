@@ -40,7 +40,12 @@
 
               <v-card-text>
                 <v-chip-group>
-                  <v-chip v-for="tag in caseItem.tags || []" :key="tag.id" color="primary" outlined>
+                  <v-chip
+                    v-for="tag in caseItem.tags || []"
+                    :key="tag.id"
+                    color="primary"
+                    outlined
+                  >
                     {{ tag.name }}
                   </v-chip>
                 </v-chip-group>
@@ -93,28 +98,39 @@
         <transition name="fade" mode="out-in">
           <template v-if="selectedCase">
             <v-card key="detail" elevation="3" class="pa-4">
-              <div class="sticky-header">
-                <v-card-title class="d-flex justify-space-between align-center">
-                  <h2 class="text-h6">{{ selectedCase.title }}</h2>
-                  <v-btn
-                    :disabled="alreadyApplied"
-                    color="primary"
-                    class="mr-3"
-                    variant="flat"
-                    :loading="applying"
-                    @click="handleApply"
-                  >
-                    {{ alreadyApplied ? 'Sudah Apply' : 'Apply Now' }}
-                  </v-btn>
-                </v-card-title>
+              <v-card-title class="d-flex justify-space-between align-center">
+                <h2 class="text-h6">{{ selectedCase.title }}</h2>
+                <v-btn
+                  :disabled="!eligible"
+                  color="primary"
+                  class="mr-3"
+                  variant="flat"
+                  :loading="applying"
+                  @click="handleApply"
+                >
+                  <template v-if="isAssigned">Sudah Ditugaskan</template>
+                  <template v-else-if="alreadyApplied">Sudah Apply</template>
+                  <template v-else>Apply Now</template>
+                </v-btn>
+              </v-card-title>
 
-                <v-card-subtitle>
-                  <v-icon>mdi-domain</v-icon> {{ selectedCase.company?.Name || '-' }} |
-                  <v-icon>mdi-map-marker</v-icon> {{ selectedCase.company?.Address || '-' }}
-                </v-card-subtitle>
+              <v-card-subtitle>
+                <v-icon>mdi-domain</v-icon> {{ selectedCase.company?.Name || '-' }} |
+                <v-icon>mdi-map-marker</v-icon> {{ selectedCase.company?.Address || '-' }}
+              </v-card-subtitle>
 
-                <v-divider />
-              </div>
+              <v-divider class="my-3" />
+
+              <!-- Alert jika sudah assigned -->
+              <v-alert
+                v-if="isAssigned && selectedCase"
+                type="warning"
+                variant="outlined"
+                class="mb-4"
+              >
+                <v-icon start>mdi-alert</v-icon>
+                Kamu sudah aktif dalam studi kasus lain, dan tidak bisa apply ke studi kasus ini.
+              </v-alert>
 
               <v-card-text>
                 <h3>Description</h3>
@@ -148,22 +164,35 @@ const {
 
 const applying = ref(false)
 const alreadyApplied = ref(false)
+const isAssigned = ref(false)
+const eligible = ref(true)
 const toast = useToast()
 
 onMounted(() => {
   fetchResearchCases()
 })
 
-// Check if user already applied saat pilih studi kasus
 watch(selectedCase, async (newCase) => {
   alreadyApplied.value = false
+  isAssigned.value = false
+  eligible.value = true
+
   if (newCase) {
-    alreadyApplied.value = await checkIfApplied(newCase.id)
+    const result = await checkIfApplied(newCase.id)
+
+    if (result.assigned) {
+      isAssigned.value = true
+      eligible.value = false
+      return // PRIORITAS: Stop di sini kalau sudah assigned
+    }
+
+    alreadyApplied.value = result.applied
+    eligible.value = !result.applied
   }
 })
 
 const handleApply = async () => {
-  if (!selectedCase.value) return
+  if (!selectedCase.value || isAssigned.value || alreadyApplied.value) return
 
   try {
     applying.value = true
@@ -172,6 +201,7 @@ const handleApply = async () => {
 
     if (res.success) {
       alreadyApplied.value = true
+      eligible.value = false
       toast.success(`Berhasil apply ke studi kasus: ${selectedCase.value.title}`)
     } else {
       toast.error(`Gagal apply: ${res.error}`)
@@ -194,11 +224,35 @@ function getInitials(name) {
 </script>
 
 <style scoped>
-.company-card { transition: transform 0.2s; cursor: pointer; }
-.company-card:hover { transform: scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-.selected-company { border: 3px solid #1976d2; background-color: #e3f2fd; box-shadow: 0 0 8px #1976d2; }
-.sticky-header { position: sticky; top: 0; background: white; z-index: 10; padding-bottom: 10px; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-.v-avatar span { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
+.company-card {
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+.company-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.selected-company {
+  border: 3px solid #1976d2;
+  background-color: #e3f2fd;
+  box-shadow: 0 0 8px #1976d2;
+}
+.custom-alert {
+  margin-bottom: 16px;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+.v-avatar span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
 </style>

@@ -14,6 +14,12 @@ export interface ResearchCase {
   }
 }
 
+type ApplicationCheckResponse = {
+  applied: boolean
+  assigned: boolean
+  eligible: boolean
+}
+
 export const useResearchCase = () => {
   const config = useRuntimeConfig()
 
@@ -60,9 +66,26 @@ export const useResearchCase = () => {
     }
   }
 
-  const checkIfApplied = async (researchCaseId: string): Promise<boolean> => {
+  // const checkIfApplied = async (researchCaseId: string): Promise<boolean> => {
+  //   try {
+  //     const res = await $fetch<{ applied: boolean }>(
+  //       `${config.public.apiBase}/api/application/check`,
+  //       {
+  //         method: 'GET',
+  //         params: { research_case_id: researchCaseId },
+  //         credentials: 'include',
+  //       }
+  //     )
+  //     return res.applied
+  //   } catch (e) {
+  //     console.error('Gagal cek status apply:', e)
+  //     return false
+  //   }
+  // }
+
+  const checkIfApplied = async (researchCaseId: string): Promise<ApplicationCheckResponse> => {
     try {
-      const res = await $fetch<{ applied: boolean }>(
+      const res = await $fetch<ApplicationCheckResponse>(
         `${config.public.apiBase}/api/application/check`,
         {
           method: 'GET',
@@ -70,10 +93,14 @@ export const useResearchCase = () => {
           credentials: 'include',
         }
       )
-      return res.applied
+      return res
     } catch (e) {
       console.error('Gagal cek status apply:', e)
-      return false
+      return {
+        applied: false,
+        assigned: false,
+        eligible: false,
+      }
     }
   }
 
