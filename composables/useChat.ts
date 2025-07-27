@@ -1,15 +1,26 @@
 // composables/useChat.ts
 export const useChat = (id: string, role: string) => {
   const config = useRuntimeConfig()
-  const endpoint =
-    role === 'student'
-      ? `/api/chatrooms/student/${id}`
-      : `/api/chatrooms/company/${id}`
+  
+  // Determine the endpoint based on user role
+  const endpoint = (() => {
+    // switch(role) {
+    //   case 'student':
+    //     return `/api/my-chatrooms/`
+    //   case 'company':
+    //     return `/api/chatrooms/company/${id}`
+    //   case 'supervisor':
+    //     return `/api/chatrooms/supervisor/${id}`
+    //   default:
+    //     throw new Error(`Invalid role: ${role}`)
+    // }
+      return `/api/my-chatrooms/`
+  })()
 
   const { data, pending, error, refresh } = useFetch(
     () => `${config.public.apiBase}${endpoint}`,
     {
-      key: `chatroom-${id}`,
+      key: `chatroom-${role}-${id}`, // Include role in key to prevent cache conflicts
       server: false,
       credentials: 'include',
     }
