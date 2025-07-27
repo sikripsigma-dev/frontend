@@ -1,93 +1,28 @@
 <template>
   <v-card class="profile-card pa-8 rounded-xl elevation-3 conten-card">
     <v-row>
-      <v-col cols="12" md="12">
-        <v-card-title class="text-h5 font-weight-bold mb-2">
-          Profile User
-        </v-card-title>
+      <v-col cols="12">
+        <v-card-title class="text-h5 font-weight-bold mb-2">Profile User</v-card-title>
         <v-divider class="mb-4" />
 
         <v-form ref="form" class="profile-form">
           <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="profile.name"
-                label="Nama Lengkap"
-                placeholder="Masukkan nama lengkap"
+            <v-col
+              v-for="field in fieldsToShow"
+              :key="field.key"
+              :cols="12"
+              :md="field.textarea ? 12 : 6"
+            >
+              <component
+                :is="field.textarea ? 'v-textarea' : 'v-text-field'"
+                v-model="profile[field.key]"
+                :label="field.label"
+                :type="field.type || 'text'"
                 variant="outlined"
                 density="comfortable"
-                prepend-inner-icon="mdi-account"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="profile.email"
-                label="Email"
-                placeholder="Masukkan email"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-email"
-                type="email"
-              />
-            </v-col>
-          </v-row>
-
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="profile.phone"
-                label="Nomor HP"
-                placeholder="Masukkan nomor HP"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-phone"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="profile.universitas"
-                label="Universitas"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-school"
-              />
-            </v-col>
-          </v-row>
-
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="profile.program_studi"
-                label="Program Studi"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-book-open"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="profile.semester"
-                label="Semester"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-calendar"
-              />
-            </v-col>
-          </v-row>
-
-          <v-row>
-            <v-col cols="12">
-              <v-textarea
-                v-model="profile.description"
-                label="Deskripsi Diri"
-                placeholder="Tulis deskripsi singkat..."
-                variant="outlined"
-                rows="3"
-                auto-grow
-                prepend-inner-icon="mdi-text"
+                :prepend-inner-icon="field.icon"
+                :auto-grow="field.textarea || undefined"
+                :rows="field.textarea ? 3 : undefined"
               />
             </v-col>
           </v-row>
@@ -131,7 +66,7 @@ import { ref, computed, watch } from 'vue';
 import { useDataUser } from '@/composables/useDataUser';
 
 definePageMeta({
-  layout: "profile",
+  layout: 'profile',
 });
 
 const { user, refresh } = useDataUser();
@@ -140,11 +75,16 @@ const profile = ref({
   name: '',
   email: '',
   phone: '',
-  universitas: '',
-  program_studi: '',
-  semester: '',
+  division: '',
+  nim: '',
+  jurusan: '',
+  gpa: '',
+  university: '',
+  linkedin: '',
+  nidn: '',
   description: '',
 });
+
 const originalProfile = ref({});
 const loadingSave = ref(false);
 
@@ -155,18 +95,78 @@ const snackbar = ref({
   icon: 'mdi-check-circle',
 });
 
+const role = computed(() => user.value?.role || 1);
+
+// Mapping field per role
+const profileFieldsByRole = {
+  1: [ // Admin
+    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
+    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
+  ],
+  2: [ // Company
+    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
+    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
+    { key: 'division', label: 'Divisi', icon: 'mdi-office-building' },
+  ],
+  3: [ // Student
+    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
+    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
+    { key: 'nim', label: 'NIM', icon: 'mdi-card-account-details' },
+    { key: 'jurusan', label: 'Program Studi', icon: 'mdi-book-open' },
+    { key: 'gpa', label: 'IPK', icon: 'mdi-star-circle' },
+    { key: 'university', label: 'Universitas/Institusi', icon: 'mdi-school' },
+    { key: 'linkedin', label: 'Linkedin', icon: 'mdi-linkedin' },
+    { key: 'description', label: 'Deskripsi Diri', icon: 'mdi-text', textarea: true },
+  ],
+  4: [ // Supervisor
+    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
+    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
+    { key: 'nidn', label: 'NIDN', icon: 'mdi-card-account-details' },
+  ],
+};
+
+const fieldsToShow = computed(() => profileFieldsByRole[role.value] || []);
+
 const initProfile = (userData) => {
-  const data = {
+  const base = {
     name: userData.name || '',
     email: userData.email || '',
     phone: userData.phone || '',
-    universitas: userData.universitas || '',
-    program_studi: userData.program_studi || '',
-    semester: userData.semester || '',
-    description: userData.description || '',
   };
-  profile.value = data;
-  originalProfile.value = JSON.parse(JSON.stringify(data));
+
+  switch (userData.role) {
+    case 2: // company
+      Object.assign(profile.value, {
+        ...base,
+        division: userData.company?.division || '',
+      });
+      break;
+    case 3: // student
+      Object.assign(profile.value, {
+        ...base,
+        nim: userData.Student?.nim || '',
+        jurusan: userData.Student?.jurusan || '',
+        gpa: userData.Student?.gpa || '',
+        university: userData.Student?.univ_name || '',
+        linkedin: userData.Student?.linkedin || '',
+        description: userData.description || '',
+      });
+      break;
+    case 4: // supervisor
+      Object.assign(profile.value, {
+        ...base,
+        nidn: userData.Supervisor?.nidn || '',
+      });
+      break;
+    default:
+      Object.assign(profile.value, base);
+  }
+
+  originalProfile.value = JSON.parse(JSON.stringify(profile.value));
 };
 
 watch(
@@ -192,14 +192,14 @@ const saveProfile = async () => {
       body: profile.value,
       credentials: 'include',
     });
-    Object.assign(originalProfile.value, JSON.parse(JSON.stringify(profile.value)));
+    originalProfile.value = JSON.parse(JSON.stringify(profile.value));
     snackbar.value = {
       visible: true,
       message: 'Profil berhasil diperbarui!',
       color: 'success',
       icon: 'mdi-check-circle',
     };
-    refresh(); // Refresh data user
+    refresh();
   } catch (err) {
     snackbar.value = {
       visible: true,
@@ -214,11 +214,6 @@ const saveProfile = async () => {
 </script>
 
 <style scoped>
-.profile-info-card {
-  padding: 32px;
-  border-radius: 12px;
-}
-
 .profile-card {
   padding: 24px;
   border-radius: 12px;

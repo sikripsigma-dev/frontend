@@ -45,13 +45,26 @@
                   class="pl-8"
                 />
               </v-list-group>
+
               <v-list-item
                 v-else
                 :prepend-icon="item.icon"
                 :title="item.name"
                 :to="`/profile/${item.url}`"
                 link
-              />
+              >
+                <template #append>
+                  <div v-if="item.name === 'Notifikasi' && hasUnread" class="badge-wrapper">
+                    <v-badge
+                      dot
+                      color="red"
+                      offset-x="0"
+                      offset-y="0"
+                      class="custom-dot"
+                    />
+                  </div>
+                </template>
+              </v-list-item>
             </template>
           </v-list>
         </v-card>
@@ -68,7 +81,6 @@
         </v-card>
       </v-col>
 
-      <!-- <v-col cols="12" md="9" lg="8.5" class="pr-md-4"> -->
       <v-col cols="12" md="9" lg="8.5" class="pl-md-4 pr-md-4">
         <div v-if="profileLoaded">
           <slot />
@@ -98,65 +110,65 @@
 </template>
 
 <script setup lang="ts">
-import Navbar from '@/components/NavBar.vue';
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useRuntimeConfig } from '#app';
-import { useMenu } from '@/composables/useMenu';
-import { useDataUser } from '@/composables/useDataUser';
+import Navbar from '@/components/NavBar.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useRuntimeConfig } from '#app'
+import { useMenu } from '@/composables/useMenu'
+import { useDataUser } from '@/composables/useDataUser'
+import { useNotificationIndicator } from '@/composables/useNotificationIndicator'
 
-const router = useRouter();
-const config = useRuntimeConfig();
+const router = useRouter()
+const config = useRuntimeConfig()
 
-const profileLoaded = ref(false);
-const profileImage = ref<string | null>(null);
-const snackbar = ref(false);
+const profileLoaded = ref(false)
+const profileImage = ref<string | null>(null)
+const snackbar = ref(false)
+
+const { hasUnread } = useNotificationIndicator()
 
 interface User {
   image?: string;
-  // add other properties as needed
 }
+
 const { uploadProfilePhoto, user, refresh } = useDataUser() as {
-  uploadProfilePhoto: (file: File) => Promise<{ success: boolean; url?: string; error?: any }>;
-  user: Ref<User | null>;
-  refresh: () => Promise<void>;
-};
-const { menu, pending } = useMenu();
+  uploadProfilePhoto: (file: File) => Promise<{ success: boolean; url?: string; error?: any }>
+  user: Ref<User | null>
+  refresh: () => Promise<void>
+}
+
+const { menu, pending } = useMenu()
 
 const menuItems = computed(() => {
-  const menus = (menu.value && Array.isArray((menu.value as any).menus)) ? (menu.value as any).menus : [];
-  return menus.filter((item: any) => item.is_active);
-});
+  const menus = (menu.value && Array.isArray((menu.value as any).menus)) ? (menu.value as any).menus : []
+  return menus.filter((item: any) => item.is_active)
+})
 
 onMounted(async () => {
   try {
-    await refresh();
+    await refresh()
     if (user.value?.image) {
-      // profileImage.value = `${config.public.apiBase}${user.value.image}`;
-      profileImage.value = `${config.public.apiBase}${user.value?.image}?t=${Date.now()}`; 
+      profileImage.value = `${config.public.apiBase}${user.value.image}?t=${Date.now()}`
     }
-    profileLoaded.value = true;
+    profileLoaded.value = true
   } catch {
-    router.push('/login');
+    router.push('/login')
   }
-});
-
+})
 
 const handleFileUpload = async (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
 
-  const result = await uploadProfilePhoto(file);
+  const result = await uploadProfilePhoto(file)
   if (result.success && result.url) {
-    profileImage.value = `${config.public.apiBase}${result.url}`;
-    snackbar.value = true;
-  } else {
-    // console.error('Upload gagal', result.error);
+    profileImage.value = `${config.public.apiBase}${result.url}`
+    snackbar.value = true
   }
-};
+}
 
-const profileCompletion = computed(() => 100);
+const profileCompletion = computed(() => 100)
 </script>
 
 <style scoped>
@@ -191,5 +203,21 @@ const profileCompletion = computed(() => 100);
 .completion-card {
   padding: 16px;
   border-radius: 12px;
+}
+
+.badge-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+}
+
+.custom-dot .v-badge__badge {
+  box-shadow: none;
+  height: 10px;
+  width: 10px;
 }
 </style>
