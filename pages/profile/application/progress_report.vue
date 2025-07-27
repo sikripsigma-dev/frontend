@@ -9,121 +9,128 @@
             <div>
               <h1 class="text-h4 font-weight-bold text-grey-darken-4">Laporan Mingguan</h1>
               <p class="text-subtitle-1 text-grey-darken-1 mb-0">
-                Isi perkembangan mingguan Anda dan bagaimana perasaan Anda
+                Isi perkembangan mingguan Anda untuk dosen pembimbing dan perusahaan
               </p>
             </div>
           </div>
         </v-col>
       </v-row>
 
+      <!-- Studi Kasus Aktif -->
+      <v-col cols="12">
+        <v-alert
+          v-if="assignmentTitle"
+          type="info"
+          variant="outlined"
+          border="start"
+          color="primary"
+          icon="mdi-lightbulb-on"
+          class="mb-6"
+        >
+          <strong>Studi Kasus Aktif:</strong> {{ assignmentTitle }}
+        </v-alert>
+
+        <v-alert
+          v-else
+          type="warning"
+          variant="outlined"
+          border="start"
+          color="warning"
+          icon="mdi-alert-circle"
+          class="mb-6"
+        >
+          Belum ada studi kasus aktif. Anda belum bisa mengisi laporan mingguan.
+        </v-alert>
+      </v-col>
+
       <!-- Form -->
       <v-col cols="12">
         <v-card elevation="2" rounded="lg" class="mb-6">
-          <v-form ref="formRef" @submit.prevent="submit">
-            <v-card-text class="pa-6">
-              <v-select
-                v-model="form.week"
-                :items="weeks"
-                label="Minggu Ke-"
-                outlined
-                required
-                prepend-icon="mdi-calendar"
-              />
+          <v-tabs v-model="activeTab" background-color="primary" dark>
+            <v-tab value="dospem">Untuk Dosen Pembimbing</v-tab>
+            <v-tab value="perusahaan">Untuk Perusahaan</v-tab>
+          </v-tabs>
 
-              <v-text-field
-                v-model="dateRangeDisplay"
-                label="Rentang Tanggal"
-                outlined
-                readonly
-                prepend-icon="mdi-calendar-range"
-              />
-
-              <v-textarea
-                v-model="form.progress"
-                outlined
-                label="Apa yang sudah Anda capai minggu ini?"
-                rows="5"
-                required
-                prepend-icon="mdi-text-box"
-              />
-
-              <v-textarea
-                v-model="form.plans"
-                outlined
-                label="Apa rencana Anda untuk minggu depan?"
-                rows="3"
-                required
-                prepend-icon="mdi-calendar-arrow-right"
-              />
-
-              <!-- Mood -->
-              <div class="mb-4">
-                <div class="text-body-1 mb-2">
-                  <v-icon left>mdi-emoticon-outline</v-icon>
-                  Bagaimana perasaan Anda minggu ini?
-                </div>
-                <div class="d-flex justify-space-between">
-                  <v-btn
-                    v-for="(mood, index) in moods"
-                    :key="index"
-                    :color="form.mood === index ? mood.color : 'grey lighten-3'"
-                    depressed
-                    fab
-                    small
-                    @click="form.mood = index"
-                  >
-                    <v-icon :color="form.mood === index ? 'white' : mood.iconColor">
-                      {{ mood.icon }}
-                    </v-icon>
+          <v-window v-model="activeTab">
+            <!-- Form untuk Dosen -->
+            <v-window-item value="dospem">
+              <v-form ref="formRef" @submit.prevent="submit" :disabled="!assignmentTitle">
+                <v-card-text class="pa-6">
+                  <v-select v-model="sharedWeek" :items="weeks" label="Minggu Ke-" outlined required prepend-icon="mdi-calendar" />
+                  <v-text-field v-model="dateRangeDisplay" label="Rentang Tanggal" outlined readonly prepend-icon="mdi-calendar-range" />
+                  <v-textarea v-model="form.progress" outlined label="Apa yang sudah Anda capai minggu ini?" rows="5" required prepend-icon="mdi-text-box" />
+                  <v-textarea v-model="form.plans" outlined label="Apa rencana Anda untuk minggu depan?" rows="3" required prepend-icon="mdi-calendar-arrow-right" />
+                  <div class="mb-4">
+                    <div class="text-body-1 mb-2">
+                      <v-icon left>mdi-emoticon-outline</v-icon>
+                      Bagaimana perasaan Anda minggu ini?
+                    </div>
+                    <div class="d-flex justify-space-between">
+                      <v-btn
+                        v-for="(mood, index) in moods"
+                        :key="index"
+                        :color="form.mood === index ? mood.color : 'grey lighten-3'"
+                        depressed fab small @click="form.mood = index"
+                      >
+                        <v-icon :color="form.mood === index ? 'white' : mood.iconColor">
+                          {{ mood.icon }}
+                        </v-icon>
+                      </v-btn>
+                    </div>
+                    <div class="d-flex justify-space-between mt-1">
+                      <span
+                        v-for="(mood, index) in moods"
+                        :key="index"
+                        class="text-caption text-center"
+                        :class="{ 'font-weight-bold': form.mood === index }"
+                        style="width: 40px;"
+                      >
+                        {{ mood.label }}
+                      </span>
+                    </div>
+                  </div>
+                  <v-textarea v-model="form.notes" outlined label="Catatan Tambahan" rows="2" prepend-icon="mdi-note" />
+                  <v-file-input v-model="form.files" multiple prepend-icon="mdi-paperclip" label="Lampiran File" show-size :rules="fileRules" />
+                </v-card-text>
+                <v-divider />
+                <v-card-actions class="pa-4">
+                  <v-btn color="grey lighten-1" text @click="reset">Reset</v-btn>
+                  <v-spacer />
+                  <v-btn color="primary" type="submit" :loading="submitting" :disabled="!assignmentTitle" depressed>
+                    <v-icon left>mdi-send</v-icon>
+                    Kirim Laporan
                   </v-btn>
-                </div>
-                <div class="d-flex justify-space-between mt-1">
-                  <span
-                    v-for="(mood, index) in moods"
-                    :key="index"
-                    class="text-caption text-center"
-                    :class="{ 'font-weight-bold': form.mood === index }"
-                    style="width: 40px;"
-                  >
-                    {{ mood.label }}
-                  </span>
-                </div>
-              </div>
+                </v-card-actions>
+              </v-form>
+            </v-window-item>
 
-              <v-textarea
-                v-model="form.notes"
-                outlined
-                label="Catatan Tambahan"
-                rows="2"
-                prepend-icon="mdi-note"
-              />
-
-              <v-file-input
-                v-model="form.files"
-                multiple
-                prepend-icon="mdi-paperclip"
-                label="Lampiran File"
-                show-size
-                :rules="fileRules"
-              />
-            </v-card-text>
-
-            <v-divider />
-
-            <v-card-actions class="pa-4">
-              <v-btn color="grey lighten-1" text @click="reset">
-                Reset
-              </v-btn>
-              <v-spacer />
-              <v-btn color="primary" type="submit" :loading="submitting" depressed>
-                <v-icon left>mdi-send</v-icon>
-                Kirim Laporan
-              </v-btn>
-            </v-card-actions>
-          </v-form>
+            <!-- Form untuk Perusahaan -->
+            <v-window-item value="perusahaan">
+              <v-form>
+                <v-card-text class="pa-6">
+                  <v-select v-model="sharedWeek" :items="weeks" label="Minggu Ke-" outlined required prepend-icon="mdi-calendar" />
+                  <v-text-field v-model="dateRangeDisplay" label="Rentang Tanggal" outlined readonly prepend-icon="mdi-calendar-range" />
+                  <v-textarea v-model="companyForm.activities" label="Progress Anda minggu ini dalam pengerjaan studi kasus perusahaan" outlined rows="4" prepend-icon="mdi-briefcase-check" required />
+                  <v-textarea v-model="companyForm.issues" label="Kendala atau hambatan yang Anda hadapi" outlined rows="3" prepend-icon="mdi-alert" />
+                  <v-textarea v-model="companyForm.hopes" label="Saran/Harapan terhadap pembimbing perusahaan" outlined rows="3" prepend-icon="mdi-account-group" />
+                  <v-textarea v-model="companyForm.notes" label="Catatan tambahan" outlined rows="2" prepend-icon="mdi-note-text" />
+                  <v-file-input v-model="companyForm.files" multiple prepend-icon="mdi-paperclip" label="Lampiran File (opsional)" show-size />
+                </v-card-text>
+                <v-divider />
+                <v-card-actions class="pa-4">
+                  <v-btn color="grey lighten-1" text @click="resetCompany">Reset</v-btn>
+                  <v-spacer />
+                  <v-btn color="success" type="button" :disabled="!assignmentTitle || submitting" depressed @click="submitCompany()">
+                    <v-icon left>mdi-send</v-icon>
+                    Kirim Laporan
+                  </v-btn>
+                </v-card-actions>
+              </v-form>
+            </v-window-item>
+          </v-window>
         </v-card>
 
-        <!-- Previous Reports -->
+        <!-- Log Laporan -->
         <v-card elevation="2" rounded="lg">
           <v-card-title class="text-h5">
             <v-icon left>mdi-history</v-icon>
@@ -142,7 +149,7 @@
                 </v-icon>
               </template>
               <template v-slot:item.status="{ item }">
-                <v-chip :color="item.status === 'Diterima' ? 'success' : 'grey'" small>
+                <v-chip :color="item.status === 'Diterima' ? 'success' : 'warning'" small>
                   {{ item.status }}
                 </v-chip>
               </template>
@@ -161,8 +168,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useWeeklyReportService } from '@/composables/useWeeklyReport'
 import { useToast } from 'vue-toastification'
+import { useWeeklyReportService } from '@/composables/useWeeklyReport'
+import { useAssignmentService } from '@/composables/useAssignment'
 
 definePageMeta({
   layout: 'profile',
@@ -170,13 +178,19 @@ definePageMeta({
 })
 
 const toast = useToast()
-const { submitReport, getMyReports } = useWeeklyReportService()
+const { submitReport, getMyReports, submitCompanyReport } = useWeeklyReportService()
+const { getMyAssignment } = useAssignmentService()
 
+const activeTab = ref('dospem')
 const formRef = ref()
 const submitting = ref(false)
+const assignmentTitle = ref('')
+const researchCaseId = ref('')
+const sharedWeek = ref(null)
+
+const weeks = Array.from({ length: 16 }, (_, i) => i + 1)
 
 const form = ref({
-  week: null,
   progress: '',
   plans: '',
   mood: 2,
@@ -184,7 +198,14 @@ const form = ref({
   files: []
 })
 
-const weeks = Array.from({ length: 16 }, (_, i) => i + 1)
+const companyForm = ref({
+  activities: '',
+  issues: '',
+  hopes: '',
+  notes: '',
+  files: []
+})
+
 const fileRules = [
   value => !value || value.length <= 3 || 'Maksimal 3 file yang diunggah'
 ]
@@ -198,9 +219,9 @@ const moods = [
 ]
 
 const dateRangeDisplay = computed(() => {
-  if (!form.value.week) return ''
+  if (!sharedWeek.value) return ''
   const start = new Date(2023, 1, 12)
-  start.setDate(start.getDate() + (form.value.week - 1) * 7)
+  start.setDate(start.getDate() + (sharedWeek.value - 1) * 7)
   const end = new Date(start)
   end.setDate(end.getDate() + 6)
   return `${start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}`
@@ -208,7 +229,7 @@ const dateRangeDisplay = computed(() => {
 
 const getISODateRange = () => {
   const start = new Date(2023, 1, 12)
-  start.setDate(start.getDate() + (form.value.week - 1) * 7)
+  start.setDate(start.getDate() + (sharedWeek.value - 1) * 7)
   const end = new Date(start)
   end.setDate(end.getDate() + 6)
   return {
@@ -217,24 +238,35 @@ const getISODateRange = () => {
   }
 }
 
-// 🚀 Submit
+const fetchActiveAssignment = async () => {
+  const { data } = await getMyAssignment()
+  if (data.value) {
+    assignmentTitle.value = data.value.data.research_case.title
+    researchCaseId.value = data.value.data.research_case.id
+  }
+}
+fetchActiveAssignment()
+
 const submit = async () => {
+  if (!sharedWeek.value) {
+    toast.error('Silakan pilih minggu terlebih dahulu.')
+    return
+  }
+
   submitting.value = true
 
   const formData = new FormData()
-  formData.append('week', form.value.week)
+  formData.append('week', sharedWeek.value)
   formData.append('progress', form.value.progress)
   formData.append('plans', form.value.plans)
   formData.append('mood', form.value.mood)
   formData.append('notes', form.value.notes)
-  // formData.append('start_date', dateRange.value.split(' - ')[0])
-  // formData.append('end_date', dateRange.value.split(' - ')[1])
+  formData.append('research_case_id', researchCaseId.value)
 
   const { start_date, end_date } = getISODateRange()
   formData.append('start_date', start_date)
   formData.append('end_date', end_date)
 
-  // Tambahkan file satu per satu
   form.value.files.forEach(file => {
     formData.append('files', file)
   })
@@ -252,26 +284,71 @@ const submit = async () => {
   }
 }
 
+const submitCompany = async () => {
+  if (!sharedWeek.value) {
+    toast.error('Silakan pilih minggu terlebih dahulu.')
+    return
+  }
+
+  submitting.value = true
+
+  const formData = new FormData()
+  formData.append('week', sharedWeek.value)
+  formData.append('activities', companyForm.value.activities)
+  formData.append('issues', companyForm.value.issues)
+  formData.append('hopes', companyForm.value.hopes)
+  formData.append('notes', companyForm.value.notes)
+  formData.append('research_case_id', researchCaseId.value)
+
+  const { start_date, end_date } = getISODateRange()
+  formData.append('start_date', start_date)
+  formData.append('end_date', end_date)
+
+  companyForm.value.files.forEach(file => {
+    formData.append('files', file)
+  })
+
+  try {
+    const { error } = await submitCompanyReport(formData)
+    if (error.value) throw error.value
+    toast.success('Laporan perusahaan berhasil dikirim!')
+    resetCompany()
+  } catch (e) {
+    toast.error('Gagal mengirim laporan perusahaan')
+  } finally {
+    submitting.value = false
+  }
+}
 
 const reset = () => {
   form.value = {
-    week: null,
     progress: '',
     plans: '',
     mood: 2,
     notes: '',
     files: []
   }
+  sharedWeek.value = null
 }
 
-// 🔁 Fetch laporan sebelumnya
+const resetCompany = () => {
+  companyForm.value = {
+    activities: '',
+    issues: '',
+    hopes: '',
+    notes: '',
+    files: []
+  }
+  sharedWeek.value = null
+}
+
 const previousReports = ref([])
 const reportHeaders = [
-  { text: 'Minggu Ke-', value: 'week' },
-  { text: 'Tanggal', value: 'date' },
-  { text: 'Perasaan', value: 'mood' },
-  { text: 'Status', value: 'status' },
-  { text: 'Aksi', value: 'actions', sortable: false }
+  { title: 'Minggu Ke-', value: 'week' },
+  { title: 'Tanggal', value: 'date' },
+  { title: 'Perasaan', value: 'mood' },
+  { title: 'Status', value: 'status' },
+  { title: 'Aksi', value: 'actions', sortable: false }
 ]
 
 const loadReports = async () => {

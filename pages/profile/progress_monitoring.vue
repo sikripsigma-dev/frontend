@@ -287,6 +287,7 @@
 <script setup>
 import { ref, computed, onMounted, watchEffect, watch } from 'vue'
 import { useWeeklyReportService } from '@/composables/useWeeklyReport'
+import { useMonitoringProgressService } from '@/composables/useMonitoringProgress'
 import { useToast } from 'vue-toastification'
 
 definePageMeta({
@@ -298,6 +299,7 @@ const config = useRuntimeConfig()
 
 const toast = useToast()
 const { getReportsBySupervisor } = useWeeklyReportService()
+const { submitSupervisorFeedback } = useMonitoringProgressService()
 
 const selectedStudent = ref(null)
 const selectedWeek = ref(null)
@@ -312,13 +314,13 @@ const selectedReport = ref(null)
 const reports = ref([])
 
 const students = ref([])
-const weeks = Array.from({ length: 16 }, (_, i) => ({ text: `Minggu ${i + 1}`, value: i + 1 }))
+const weeks = Array.from({ length: 16 }, (_, i) => ({ title: `Minggu ${i + 1}`, value: i + 1 }))
 const statusOptions = [
-  { text: 'Semua Status', value: null },
-  { text: 'Belum Ditinjau', value: 'Belum Ditinjau' },
-  { text: 'Ditinjau', value: 'Ditinjau' },
-  { text: 'Revisi', value: 'Revisi' },
-  { text: 'Disetujui', value: 'Disetujui' },
+  { title: 'Semua Status', value: null },
+  { title: 'Belum Ditinjau', value: 'Belum Ditinjau' },
+  { title: 'Ditinjau', value: 'Ditinjau' },
+  { title: 'Revisi', value: 'Revisi' },
+  { title: 'Disetujui', value: 'Disetujui' },
 ]
 
 const summaryStats = ref([
@@ -328,12 +330,12 @@ const summaryStats = ref([
 ])
 
 const headers = [
-  { text: 'Mahasiswa', value: 'student', sortable: false },
-  { text: 'Minggu', value: 'week', align: 'center' },
-  { text: 'Tanggal', value: 'date_range' },
-  { text: 'Kondisi', value: 'mood', align: 'center' },
-  { text: 'Status', value: 'status', align: 'center' },
-  { text: 'Aksi', value: 'actions', align: 'center', sortable: false },
+  { title: 'Mahasiswa', value: 'student', sortable: false },
+  { title: 'Minggu', value: 'week', align: 'center' },
+  { title: 'Tanggal', value: 'date_range' },
+  { title: 'Kondisi', value: 'mood', align: 'center' },
+  { title: 'Status', value: 'status', align: 'center' },
+  { title: 'Aksi', value: 'actions', align: 'center', sortable: false },
 ]
 
 const filteredReports = computed(() => {
@@ -378,7 +380,7 @@ const loadReports = async () => {
   const uniqueStudents = [...new Map(reports.value.map(r => [
     r.student?.nim,
     {
-      text: `${r.student?.name} (${r.student?.nim})`,
+      title: `${r.student?.name} (${r.student?.nim})`,
       value: r.student?.nim
     }
   ])).values()]
@@ -427,24 +429,30 @@ const submitFeedback = async () => {
   submittingFeedback.value = true
 
   try {
-    console.log("📩 Submitting feedback:", {
-      id: selectedReport.value.id,
+    const payload = {
+      weekly_report_id: selectedReport.value.id,
       feedback: feedbackText.value,
       status: feedbackStatus.value
-    })
+    }
 
-    // Simulate update (replace this with real PUT to /api/weekly-report/:id/review)
-    const index = reports.value.findIndex(r => r.id === selectedReport.value.id)
-    if (index !== -1) {
-      reports.value[index].feedback = feedbackText.value
-      reports.value[index].status = feedbackStatus.value
+    const { data, error } = await submitSupervisorFeedback(payload)
+
+    if (error.value) {
+      throw new Error(error.value.data?.message || 'Gagal menyimpan feedback')
     }
 
     toast.success('Masukan berhasil dikirim!')
     feedbackDialog.value = false
+
+    // Optional: Update status & feedback di local data
+    const index = reports.value.findIndex(r => r.id === selectedReport.value.id)
+    if (index !== -1) {
+      reports.value[index].status = feedbackStatus.value
+      reports.value[index].feedback = feedbackText.value
+    }
+
   } catch (e) {
-    toast.error('Gagal mengirim masukan')
-    console.error(e)
+    toast.error(e.message || 'Terjadi kesalahan saat mengirim feedback')
   } finally {
     submittingFeedback.value = false
   }
