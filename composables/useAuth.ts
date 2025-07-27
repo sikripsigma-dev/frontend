@@ -67,6 +67,25 @@ export const useAuth = () => {
     }
   };
 
+  const verifyUser = async (token: string) => {
+    try {
+      const res = await $fetch<{ message: string; user_id: string }>(
+        `${config.public.apiBase}/api/auth/verify-email`,
+        {
+          method: 'GET',
+          params: { token },
+        }
+      );
+      return { success: true, message: res.message };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error?.data?.error || 'Verifikasi gagal',
+      };
+    }
+  };
+
+
   const isAuthenticated = computed(() => !!user.value);
 
   return {
@@ -74,6 +93,7 @@ export const useAuth = () => {
     login,
     logout,
     fetchUser,
+    verifyUser,
     isAuthenticated,
     isLoggedIn: isAuthenticated,
     authLoading,
