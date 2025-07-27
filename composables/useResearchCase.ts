@@ -17,6 +17,7 @@ export interface ResearchCase {
   duration?: string
   description?: string
   created_at?: string
+  is_active?: boolean
   company: Company
 }
   
@@ -77,6 +78,16 @@ export interface ResearchCase {
         credentials: 'include',
       })
     }
+
+    // UPDATE Status
+    const toggleActive = (id: string, isActive: boolean) => {
+      return $fetch(`${config.public.apiBase}/api/research-case/${id}/status`, {
+        method: 'PUT',
+        body: { is_active: isActive },
+        credentials: 'include',
+      })
+    }
+
   
     // DELETE
     const remove = (id: string) => {
@@ -86,6 +97,6 @@ export interface ResearchCase {
       })
     }
   
-    return { getByCompany, getById, create, update, remove }
+    return { getByCompany, getById, create, update, remove, toggleActive}
   }
   

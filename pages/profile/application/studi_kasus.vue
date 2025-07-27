@@ -29,10 +29,44 @@
             </template>
 
             <template #item.actions="{ item }">
-              <div class="d-flex justify-center">
+              <div class="d-flex justify-center gap-1">
                 <v-btn icon color="primary" size="small" @click="lihatDetail(item.research_case)" variant="tonal">
                   <v-icon>mdi-eye</v-icon>
                 </v-btn>
+
+                <template v-if="item.status === 'accepted'">
+                  <v-tooltip text="Ambil Studi Kasus">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon
+                        color="success"
+                        size="small"
+                        :disabled="responding"
+                        @click="handleResponse(item.id, 'confirmed')"
+                        variant="tonal"
+                      >
+                        <v-icon>mdi-check</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+
+                  <v-tooltip text="Tolak Studi Kasus">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon
+                        color="error"
+                        size="small"
+                        :disabled="responding"
+                        @click="handleResponse(item.id, 'declined')"
+                        variant="tonal"
+                      >
+                        <v-icon>mdi-close</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+                </template>
               </div>
             </template>
 
@@ -53,6 +87,7 @@ import { ref, computed, watch } from 'vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useApplicationService } from '@/composables/useApplication'
 import { navigateTo } from '#app'
+import { useToast } from 'vue-toastification'
 
 definePageMeta({
   layout: 'profile',
@@ -67,13 +102,12 @@ const headers = [
   { title: 'Aksi', key: 'actions', sortable: false, align: 'center' as const },
 ]
 
-
 const { user } = useDataUser()
-const { getByStudent } = useApplicationService()
-
-// const applications = ref([])
+const { getByStudent, respondToApplication } = useApplicationService()
 const applications = ref<Application[]>([])
 const pending = ref(false)
+const responding = ref(false)
+const toast = useToast()
 
 const fetchApplications = async (studentId: string) => {
   pending.value = true
@@ -86,11 +120,15 @@ const fetchApplications = async (studentId: string) => {
   pending.value = false
 }
 
-watch(() => user.value, (val) => {
-  if (val?.id) {
-    fetchApplications(val.id)
-  }
-}, { immediate: true })
+watch(
+  () => user.value,
+  (val) => {
+    if (val?.id) {
+      fetchApplications(val.id)
+    }
+  },
+  { immediate: true }
+)
 
 const tableItems = computed(() =>
   applications.value.map((app, index) => ({
@@ -107,18 +145,45 @@ const lihatDetail = (caseItem: { id: string }) => {
   navigateTo(`/profile/cases/student/${caseItem.id}`)
 }
 
+const handleResponse = async (applicationId: number, status: string) => {
+  if (responding.value) return
+  responding.value = true
+
+  try {
+    await respondToApplication(applicationId.toString(), status)
+    await fetchApplications(user.value.id)
+    const action = status === 'confirmed' ? 'dikonfirmasi' : 'ditolak'
+    toast.success(`Studi kasus berhasil ${action}.`)
+  } catch (error) {
+    console.error(error)
+    toast.error('Gagal memproses respon.')
+  } finally {
+    responding.value = false
+  }
+}
+
 const getStatusColor = (status: string | undefined) => {
   switch (status?.toLowerCase()) {
-    case 'diajukan': return 'primary'
-    case 'diterima': return 'success'
-    case 'ditolak': return 'error'
-    default: return 'grey'
+    case 'pending':
+      return 'warning' // Diajukan
+    case 'accepted':
+      return 'primary' // Diterima perusahaan, menunggu konfirmasi
+    case 'confirmed':
+      return 'success' // Mahasiswa setuju → aktif
+    case 'declined':
+      return 'error' // Mahasiswa menolak tawaran
+    case 'rejected':
+      return 'error' // Ditolak perusahaan
+    case 'cancelled':
+      return 'grey' // Mahasiswa batalkan sebelum diproses
+    default:
+      return 'grey'
   }
 }
 </script>
 
 <style scoped>
-.d-flex.gap-1 > * {
+.d-flex.gap-1 > *:not(:last-child) {
   margin-right: 4px;
 }
 </style>
