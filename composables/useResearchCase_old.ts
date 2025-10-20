@@ -39,9 +39,13 @@ export const useResearchCase = () => {
     error.value = null
     try {
       const res = await $fetch<{ research_cases: ResearchCase[] }>(
-        `${config.public.apiBase}/api/research-case`,
+        `${config.public.apiBase}/api/research-case/approved`,
         { credentials: 'include' }
       )
+      // const res = await $fetch<{ research_cases: ResearchCase[] }>(
+      //   `${config.public.apiBase}/api/research-case`,
+      //   { credentials: 'include' }
+      // )
       researchCases.value = res.research_cases
     } catch (err: any) {
       error.value = err?.data?.message || err?.message || 'Gagal memuat data'
@@ -65,23 +69,6 @@ export const useResearchCase = () => {
       }
     }
   }
-
-  // const checkIfApplied = async (researchCaseId: string): Promise<boolean> => {
-  //   try {
-  //     const res = await $fetch<{ applied: boolean }>(
-  //       `${config.public.apiBase}/api/application/check`,
-  //       {
-  //         method: 'GET',
-  //         params: { research_case_id: researchCaseId },
-  //         credentials: 'include',
-  //       }
-  //     )
-  //     return res.applied
-  //   } catch (e) {
-  //     console.error('Gagal cek status apply:', e)
-  //     return false
-  //   }
-  // }
 
   const checkIfApplied = async (researchCaseId: string): Promise<ApplicationCheckResponse> => {
     try {

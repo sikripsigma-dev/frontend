@@ -137,16 +137,21 @@ const { uploadProfilePhoto, user, refresh } = useDataUser() as {
   refresh: () => Promise<void>
 }
 
-const { menu, pending } = useMenu()
+// const { menu, pending } = useMenu()
+const { menus, pending, fetchOnce } = useMenu()
 
-const menuItems = computed(() => {
-  const menus = (menu.value && Array.isArray((menu.value as any).menus)) ? (menu.value as any).menus : []
-  return menus.filter((item: any) => item.is_active)
-})
+// const menuItems = computed(() => {
+//   const menus = (menu.value && Array.isArray((menu.value as any).menus)) ? (menu.value as any).menus : []
+//   return menus.filter((item: any) => item.is_active)
+// })
+const menuItems = computed(() =>
+  Array.isArray(menus.value) ? menus.value.filter(i => i.is_active) : []
+)
 
 onMounted(async () => {
   try {
-    await refresh()
+    await fetchOnce()   // <--- load menu sekali
+    await refresh()     // ini refresh dari useDataUser (profil), bukan menu
     if (user.value?.image) {
       profileImage.value = `${config.public.apiBase}${user.value.image}?t=${Date.now()}`
     }

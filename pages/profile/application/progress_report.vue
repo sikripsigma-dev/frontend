@@ -57,9 +57,7 @@
               <v-form ref="formRef" @submit.prevent="submit" :disabled="!assignmentTitle">
                 <v-card-text class="pa-6">
                   <v-select v-model="sharedWeek" :items="weeks" label="Minggu Ke-" outlined required prepend-icon="mdi-calendar" />
-                  <v-text-field v-model="dateRangeDisplay" label="Rentang Tanggal" outlined readonly prepend-icon="mdi-calendar-range" />
                   <v-textarea v-model="form.progress" outlined label="Apa yang sudah Anda capai minggu ini?" rows="5" required prepend-icon="mdi-text-box" />
-                  <v-textarea v-model="form.plans" outlined label="Apa rencana Anda untuk minggu depan?" rows="3" required prepend-icon="mdi-calendar-arrow-right" />
                   <div class="mb-4">
                     <div class="text-body-1 mb-2">
                       <v-icon left>mdi-emoticon-outline</v-icon>
@@ -109,10 +107,7 @@
               <v-form>
                 <v-card-text class="pa-6">
                   <v-select v-model="sharedWeek" :items="weeks" label="Minggu Ke-" outlined required prepend-icon="mdi-calendar" />
-                  <v-text-field v-model="dateRangeDisplay" label="Rentang Tanggal" outlined readonly prepend-icon="mdi-calendar-range" />
                   <v-textarea v-model="companyForm.activities" label="Progress Anda minggu ini dalam pengerjaan studi kasus perusahaan" outlined rows="4" prepend-icon="mdi-briefcase-check" required />
-                  <v-textarea v-model="companyForm.issues" label="Kendala atau hambatan yang Anda hadapi" outlined rows="3" prepend-icon="mdi-alert" />
-                  <v-textarea v-model="companyForm.hopes" label="Saran/Harapan terhadap pembimbing perusahaan" outlined rows="3" prepend-icon="mdi-account-group" />
                   <v-textarea v-model="companyForm.notes" label="Catatan tambahan" outlined rows="2" prepend-icon="mdi-note-text" />
                   <v-file-input v-model="companyForm.files" multiple prepend-icon="mdi-paperclip" label="Lampiran File (opsional)" show-size />
                 </v-card-text>
@@ -138,19 +133,22 @@
           </v-card-title>
           <v-card-text>
             <v-data-table
-              :headers="reportHeaders"
+              :headers="activeTab === 'dospem' ? reportHeaders : companyReportHeaders"
               :items="previousReports"
               :items-per-page="5"
               class="elevation-1"
             >
-              <template v-slot:item.mood="{ item }">
+              <template v-slot:item.mood="{ item }" v-if="activeTab === 'dospem'">
                 <v-icon :color="moods[item.mood]?.color">
                   {{ moods[item.mood]?.icon }}
                 </v-icon>
               </template>
               <template v-slot:item.status="{ item }">
-                <v-chip :color="item.status === 'Diterima' ? 'success' : 'warning'" small>
+                <v-chip :color="getStatusColor(item)" small>
                   {{ item.status }}
+                  <v-tooltip v-if="item.has_feedback && activeTab === 'dospem'" activator="parent" location="top">
+                    Sudah ada feedback
+                  </v-tooltip>
                 </v-chip>
               </template>
               <template v-slot:item.actions="{ item }">
@@ -161,13 +159,104 @@
             </v-data-table>
           </v-card-text>
         </v-card>
+
+        <!-- Certificate Section -->
+        <!-- <v-card elevation="2" rounded="lg" class="mt-6">
+          <v-card-title class="text-h5">
+            <v-icon left>mdi-certificate</v-icon>
+            Sertifikat Penyelesaian
+          </v-card-title>
+          <v-card-text>
+            <v-alert
+              v-if="assignmentStatus === 'completed'"
+              type="success"
+              variant="tonal"
+              class="mb-4"
+            >
+              Anda telah menyelesaikan studi kasus ini. Silakan unduh sertifikat penyelesaian.
+            </v-alert>
+            <v-alert
+              v-else
+              type="warning"
+              variant="tonal"
+              class="mb-4"
+            >
+              Sertifikat akan tersedia setelah Anda menyelesaikan studi kasus dan dosen mengkonfirmasi penyelesaian.
+            </v-alert>
+            
+            <v-btn
+              color="primary"
+              :disabled="!canGenerateCertificate"
+              @click="generateCertificate"
+              :loading="generatingCertificate"
+            >
+              <template v-slot:loader>
+                <v-progress-circular indeterminate size="24"></v-progress-circular>
+              </template>
+              <v-icon left>mdi-download</v-icon>
+              Unduh Sertifikat
+            </v-btn>
+
+            <v-alert
+              v-if="certificateError"
+              type="error"
+              class="mt-4"
+            >
+              {{ certificateError }}
+            </v-alert>
+          </v-card-text>
+        </v-card> -->
       </v-col>
     </v-row>
+
+    <!-- Feedback Dialog -->
+    <v-dialog v-model="feedbackDialog" max-width="600px">
+      <v-card>
+        <v-card-title class="text-h5">
+          <v-icon left>mdi-comment-text</v-icon>
+          {{ activeTab === 'dospem' ? 'Feedback Dosen Pembimbing' : 'Catatan Perusahaan' }}
+        </v-card-title>
+        <v-card-text>
+          <v-alert v-if="feedbackLoading" type="info" class="mb-4">
+            Memuat feedback...
+          </v-alert>
+          
+          <template v-if="currentFeedback">
+            <div class="mb-4">
+              <strong>Minggu Ke-:</strong> {{ currentFeedback.WeeklyReport?.week || selectedReport?.week || '-' }}
+            </div>
+            <div class="mb-4">
+              <strong>Status:</strong> 
+              <v-chip :color="currentFeedback.status === 'Diterima' ? 'success' : 'warning'" small class="ml-2">
+                {{ currentFeedback.status }}
+              </v-chip>
+            </div>
+            <div class="mb-4">
+              <strong>Tanggal {{ activeTab === 'dospem' ? 'Feedback' : 'Laporan' }}:</strong> 
+              {{ formatDate(currentFeedback.created_at) }}
+            </div>
+            <v-divider class="my-4"></v-divider>
+            <div class="text-body-1">
+              <strong>{{ activeTab === 'dospem' ? 'Feedback' : 'Catatan' }}:</strong>
+              <p class="mt-2" style="white-space: pre-line;">{{ currentFeedback.feedback || currentFeedback.notes || 'Tidak ada feedback' }}</p>
+            </div>
+          </template>
+          
+          <v-alert v-else-if="!feedbackLoading" type="warning">
+            Belum ada feedback untuk laporan ini
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="feedbackDialog = false">Tutup</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useWeeklyReportService } from '@/composables/useWeeklyReport'
 import { useAssignmentService } from '@/composables/useAssignment'
@@ -178,21 +267,30 @@ definePageMeta({
 })
 
 const toast = useToast()
-const { submitReport, getMyReports, submitCompanyReport } = useWeeklyReportService()
-const { getMyAssignment } = useAssignmentService()
+const { submitReport, getMyReports, submitCompanyReport, getSupervisorFeedback } = useWeeklyReportService()
+const { getMyAssignment, generateCertificate: generateCertificateApi } = useAssignmentService()
 
+// State
 const activeTab = ref('dospem')
 const formRef = ref()
 const submitting = ref(false)
 const assignmentTitle = ref('')
 const researchCaseId = ref('')
 const sharedWeek = ref(null)
+const feedbackDialog = ref(false)
+const currentFeedback = ref(null)
+const feedbackLoading = ref(false)
+const selectedReport = ref(null)
+const generatingCertificate = ref(false)
+const certificateError = ref('')
+const assignmentStatus = ref('')
+const assignmentEndedAt = ref(null)
 
+// Data
 const weeks = Array.from({ length: 16 }, (_, i) => i + 1)
 
 const form = ref({
   progress: '',
-  plans: '',
   mood: 2,
   notes: '',
   files: []
@@ -200,8 +298,6 @@ const form = ref({
 
 const companyForm = ref({
   activities: '',
-  issues: '',
-  hopes: '',
   notes: '',
   files: []
 })
@@ -218,6 +314,37 @@ const moods = [
   { icon: 'mdi-emoticon-cool', label: 'Luar Biasa', color: 'teal', iconColor: 'teal darken-1' }
 ]
 
+const reportHeaders = [
+  { title: 'Minggu Ke-', value: 'week' },
+  { title: 'Tanggal', value: 'date' },
+  { title: 'Perasaan', value: 'mood' },
+  { title: 'Status', value: 'status' },
+  { title: 'Aksi', value: 'actions', sortable: false }
+]
+
+const companyReportHeaders = [
+  { title: 'Minggu Ke-', value: 'week' },
+  { title: 'Tanggal', value: 'date' },
+  { title: 'Aktivitas', value: 'activities' },
+  { title: 'Status', value: 'status' },
+  { title: 'Aksi', value: 'actions', sortable: false }
+]
+
+const previousReports = ref([])
+
+// Computed
+// const canGenerateCertificate = computed(() => {
+//   return assignmentStatus.value === 'completed' && assignmentEndedAt.value
+// })
+
+const canGenerateCertificate = computed(() => {
+  console.log('Checking certificate conditions:',
+    'Status:', assignmentStatus.value,
+    'EndedAt:', assignmentEndedAt.value
+  )
+  return assignmentStatus.value === 'completed' && assignmentEndedAt.value
+})
+
 const dateRangeDisplay = computed(() => {
   if (!sharedWeek.value) return ''
   const start = new Date(2023, 1, 12)
@@ -227,6 +354,7 @@ const dateRangeDisplay = computed(() => {
   return `${start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}`
 })
 
+// Methods
 const getISODateRange = () => {
   const start = new Date(2023, 1, 12)
   start.setDate(start.getDate() + (sharedWeek.value - 1) * 7)
@@ -238,14 +366,82 @@ const getISODateRange = () => {
   }
 }
 
+// const fetchActiveAssignment = async () => {
+//   const { data } = await getMyAssignment()
+//   if (data.value) {
+//     assignmentTitle.value = data.value.data.research_case.title
+//     researchCaseId.value = data.value.data.research_case.id
+//     assignmentStatus.value = data.value.data.status
+//     assignmentEndedAt.value = data.value.data.ended_at
+//   }
+// }
+
 const fetchActiveAssignment = async () => {
-  const { data } = await getMyAssignment()
-  if (data.value) {
-    assignmentTitle.value = data.value.data.research_case.title
-    researchCaseId.value = data.value.data.research_case.id
+  try {
+    const { data, error } = await getMyAssignment()
+    if (data.value) {
+      assignmentTitle.value = data.value.data.research_case.title
+      researchCaseId.value = data.value.data.research_case.id
+      assignmentStatus.value = data.value.data.status
+      assignmentEndedAt.value = data.value.data.ended_at
+      
+      // Debugging
+      console.log('Assignment Status:', assignmentStatus.value)
+      console.log('Ended At:', assignmentEndedAt.value)
+    } else if (error.value) {
+      console.error('Error fetching assignment:', error.value)
+    }
+  } catch (err) {
+    console.error('Failed to fetch assignment:', err)
   }
 }
-fetchActiveAssignment()
+
+const generateCertificate = async () => {
+  if (!canGenerateCertificate.value) {
+    toast.error('Anda harus menyelesaikan studi kasus terlebih dahulu')
+    return
+  }
+
+  generatingCertificate.value = true
+  certificateError.value = ''
+  
+  try {
+    const { data, error } = await generateCertificateApi()
+    
+    if (error.value) {
+      throw new Error(error.value.message || 'Gagal mengunduh sertifikat')
+    }
+
+    if (!data.value) {
+      throw new Error('Tidak ada data sertifikat yang diterima')
+    }
+
+    // Create download link
+    const blob = new Blob([data.value], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    // Generate filename based on assignment title and current date
+    const filename = `Sertifikat_${assignmentTitle.value.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+    link.setAttribute('download', filename)
+    
+    document.body.appendChild(link)
+    link.click()
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    }, 100)
+  } catch (err) {
+    console.error('Certificate download error:', err)
+    certificateError.value = err.message || 'Terjadi kesalahan saat mengunduh sertifikat'
+    toast.error(certificateError.value)
+  } finally {
+    generatingCertificate.value = false
+  }
+}
 
 const submit = async () => {
   if (!sharedWeek.value) {
@@ -258,7 +454,6 @@ const submit = async () => {
   const formData = new FormData()
   formData.append('week', sharedWeek.value)
   formData.append('progress', form.value.progress)
-  formData.append('plans', form.value.plans)
   formData.append('mood', form.value.mood)
   formData.append('notes', form.value.notes)
   formData.append('research_case_id', researchCaseId.value)
@@ -276,7 +471,7 @@ const submit = async () => {
     if (error.value) throw error.value
     toast.success('Laporan berhasil dikirim!')
     reset()
-    await loadReports()
+    await loadReports('dosen')
   } catch (e) {
     toast.error('Gagal mengirim laporan')
   } finally {
@@ -295,8 +490,6 @@ const submitCompany = async () => {
   const formData = new FormData()
   formData.append('week', sharedWeek.value)
   formData.append('activities', companyForm.value.activities)
-  formData.append('issues', companyForm.value.issues)
-  formData.append('hopes', companyForm.value.hopes)
   formData.append('notes', companyForm.value.notes)
   formData.append('research_case_id', researchCaseId.value)
 
@@ -313,6 +506,7 @@ const submitCompany = async () => {
     if (error.value) throw error.value
     toast.success('Laporan perusahaan berhasil dikirim!')
     resetCompany()
+    await loadReports('perusahaan')
   } catch (e) {
     toast.error('Gagal mengirim laporan perusahaan')
   } finally {
@@ -323,7 +517,6 @@ const submitCompany = async () => {
 const reset = () => {
   form.value = {
     progress: '',
-    plans: '',
     mood: 2,
     notes: '',
     files: []
@@ -334,76 +527,82 @@ const reset = () => {
 const resetCompany = () => {
   companyForm.value = {
     activities: '',
-    issues: '',
-    hopes: '',
     notes: '',
     files: []
   }
   sharedWeek.value = null
 }
 
-const previousReports = ref([])
-const reportHeaders = [
-  { title: 'Minggu Ke-', value: 'week' },
-  { title: 'Tanggal', value: 'date' },
-  { title: 'Perasaan', value: 'mood' },
-  { title: 'Status', value: 'status' },
-  { title: 'Aksi', value: 'actions', sortable: false }
-]
-
-const loadReports = async () => {
-  const { data, error } = await getMyReports()
+const loadReports = async (type = 'dosen') => {
+  const { data, error } = await getMyReports(type)
   if (data.value) {
     previousReports.value = data.value.data.map(r => ({
       ...r,
-      date: `${r.start_date} - ${r.end_date}`
+      date: `${r.start_date} - ${r.end_date}`,
+      has_feedback: r.has_feedback || false
     }))
   } else if (error.value) {
     toast.error('Gagal memuat laporan')
   }
 }
-loadReports()
 
-const viewReport = (report) => {
-  console.log('Lihat laporan:', report)
+const viewReport = async (report) => {
+  selectedReport.value = report
+  feedbackDialog.value = true
+  currentFeedback.value = null
+  
+  if (activeTab.value === 'dospem') {
+    feedbackLoading.value = true
+    try {
+      const { data, error } = await getSupervisorFeedback(report.id)
+      if (data.value && data.value.feedbacks && data.value.feedbacks.length > 0) {
+        currentFeedback.value = data.value.feedbacks[0]
+      }
+    } catch (e) {
+      toast.error('Gagal memuat feedback')
+    } finally {
+      feedbackLoading.value = false
+    }
+  } else {
+    // Handle company report viewing
+    currentFeedback.value = {
+      status: report.status,
+      created_at: report.created_at,
+      feedback: report.notes || 'Tidak ada catatan dari perusahaan',
+      WeeklyReport: { week: report.week }
+    }
+  }
 }
+
+const getStatusColor = (item) => {
+  if (item.status === 'Diterima') return 'success'
+  if (item.has_feedback && activeTab.value === 'dospem') return 'info'
+  return 'warning'
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return '-'
+  return new Date(dateString).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// Watch for tab changes to load appropriate reports
+watch(activeTab, (newTab) => {
+  if (newTab === 'dospem') {
+    loadReports('supervisor')
+  } else if (newTab === 'perusahaan') {
+    loadReports('company')
+  }
+})
+
+// Lifecycle
+onMounted(() => {
+  fetchActiveAssignment()
+  loadReports('supervisor') // Load dosen reports by default
+})
 </script>
-
-<style scoped>
-.v-card {
-  width: 100%;
-  max-width: 900px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.v-card + .v-card {
-  margin-top: 32px;
-}
-.v-card-text {
-  padding-top: 24px !important;
-  padding-bottom: 24px !important;
-}
-.v-btn--active {
-  transform: scale(1.05);
-  transition: all 0.2s ease;
-}
-.v-btn:hover {
-  filter: brightness(1.05);
-}
-.v-icon.mr-3 {
-  margin-top: -2px;
-}
-.v-data-table {
-  border-radius: 12px;
-  overflow: hidden;
-  font-size: 0.875rem;
-}
-.v-data-table-header th {
-  font-weight: 600;
-  background-color: #f8f9fa;
-}
-.v-data-table tbody tr:hover {
-  background-color: #f0f4f8;
-  transition: background-color 0.2s ease;
-}
-</style>

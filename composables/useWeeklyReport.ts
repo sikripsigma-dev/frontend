@@ -15,10 +15,15 @@ export const useWeeklyReportService = () => {
         body: formData
       })
   
-    const getMyReports = () =>
-      useFetch(() => `${config.public.apiBase}/api/weekly-report`, {
-        credentials: 'include'
-      })
+    // const getMyReports = () =>
+    //   useFetch(() => `${config.public.apiBase}/api/weekly-report`, {
+    //     credentials: 'include'
+    //   })
+
+    const getMyReports = (type: 'dosen' | 'perusahaan' = 'dosen') => 
+    useFetch(() => `${config.public.apiBase}/api/weekly-report?type=${type}`, {
+      credentials: 'include'
+    })
 
     const getReportsBySupervisor = () =>
       useFetch(() => `${config.public.apiBase}/api/weekly-report/bysupervisor`, {
@@ -29,7 +34,13 @@ export const useWeeklyReportService = () => {
       useFetch(() => `${config.public.apiBase}/api/weekly-report/bycompany`, {
         credentials: 'include'
       })
+
+      // get feedback by weeklyreport
+      const getSupervisorFeedback = (weeklyReportId: string) =>
+      useFetch(() => `${config.public.apiBase}/api/feedback/supervisor/${weeklyReportId}`, {
+        credentials: 'include'
+      })
   
-    return { submitReport, submitCompanyReport, getMyReports, getReportsBySupervisor, getReportsByCompany }
+    return { submitReport, submitCompanyReport, getMyReports, getReportsBySupervisor, getReportsByCompany, getSupervisorFeedback}
   }
   

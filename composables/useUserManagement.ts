@@ -1,18 +1,22 @@
 export const useUserManagement = () => {
-    const config = useRuntimeConfig()
-  
-    const getAllUsers = () =>
-      useFetch(() => `${config.public.apiBase}/api/users`, {
-        credentials: 'include'
-      })
+  const config = useRuntimeConfig()
+  const base = config.public.apiBase
 
-    const updateUser = (id: string, formData: FormData) =>
-      useFetch(() => `${config.public.apiBase}/api/user/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        body: formData
-      })
-  
-    return { getAllUsers, updateUser }
-  }
-  
+  const getAllUsers = () =>
+    useFetch(() => `${base}/api/users`, { credentials: 'include' })
+
+  // buat prefill Headstudy (ambil relasi)
+  const getUserDetail = (id: string) =>
+    useFetch(() => `${base}/api/user/${id}`, { credentials: 'include' })
+
+  // kirim JSON (perlu utk field kaprodi)
+  const updateUser = (id: string, payload: any) =>
+    useFetch(() => `${base}/api/user/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      body: payload,
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+  return { getAllUsers, getUserDetail, updateUser }
+}

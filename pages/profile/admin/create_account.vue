@@ -7,7 +7,7 @@
           <v-icon color="primary" size="40" class="mr-3">mdi-account-plus</v-icon>
           <div>
             <h1 class="text-h4 font-weight-bold text-grey-darken-4">Buat Akun Pengguna</h1>
-            <p class="text-subtitle-1 text-grey-darken-1">Buat akun untuk Dosen Pembimbing atau Perusahaan</p>
+            <p class="text-subtitle-1 text-grey-darken-1">Buat akun untuk Kaprodi atau Perusahaan</p>
           </div>
         </div>
         <v-divider class="my-4"></v-divider>
@@ -69,8 +69,8 @@
                 />
               </v-col>
 
-              <!-- Institution -->
-              <v-col cols="12" v-if="form.role === 'dosen'">
+              <!-- Institution selector -->
+              <v-col cols="12" v-if="form.role === 'kaprodi'">
                 <v-select
                   v-model="form.institution_id"
                   :items="universityOptions"
@@ -96,8 +96,8 @@
                 />
               </v-col>
 
-              <!-- Dosen Only -->
-              <template v-if="form.role === 'dosen'">
+              <!-- Kaprodi Only -->
+              <template v-if="form.role === 'kaprodi'">
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model="form.nidn"
@@ -105,6 +105,19 @@
                     outlined
                     prepend-inner-icon="mdi-identifier"
                     :rules="[required]"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-select
+                    v-model="form.study_program_id"
+                    :items="studyProgramOptions"
+                    label="Program Studi*"
+                    item-title="title"
+                    item-value="value"
+                    outlined
+                    prepend-inner-icon="mdi-book-education"
+                    :rules="[required]"
+                    :disabled="prodiLoading || form.role !== 'kaprodi'"
                   />
                 </v-col>
               </template>
@@ -156,15 +169,15 @@
               :items-per-page="5"
               class="elevation-1"
             >
-              <template v-slot:item.role="{ item }">
-                <v-chip small :color="item.role === 'dosen' ? 'primary' : 'secondary'">
-                  {{ item.role === 'dosen' ? 'Dosen' : 'Perusahaan' }}
+              <template #item.role="{ item }">
+                <v-chip small :color="item.role === 'kaprodi' ? 'primary' : 'secondary'">
+                  {{ item.role === 'kaprodi' ? 'Kaprodi' : 'Perusahaan' }}
                 </v-chip>
               </template>
-              <template v-slot:item.createdAt="{ item }">
+              <template #item.createdAt="{ item }">
                 {{ formatDate(item.createdAt) }}
               </template>
-              <template v-slot:item.status="{ item }">
+              <template #item.status="{ item }">
                 <v-icon :color="item.status === 'active' ? 'success' : 'warning'">
                   {{ item.status === 'active' ? 'mdi-check-circle' : 'mdi-clock' }}
                 </v-icon>
@@ -178,15 +191,14 @@
 </template>
 
 <script setup>
-definePageMeta({
-  layout: 'profile',
-})
+definePageMeta({ layout: 'profile' })
 </script>
 
 <script>
 import { useUniversityService } from '~/composables/useUniversity'
 import { useDataCompany } from '~/composables/useDataCompany'
 import { useCreateUserService } from '~/composables/useCreateUser'
+import { useDataProdi } from '~/composables/useDataProdi'   // ⬅️ ganti ini
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
@@ -195,8 +207,10 @@ export default {
   data() {
     return {
       loading: false,
+      prodiLoading: false,
       universityOptions: [],
       companyOptions: [],
+      studyProgramOptions: [],
       form: {
         role: '',
         name: '',
@@ -204,11 +218,12 @@ export default {
         phone: '',
         institution_id: '',
         nidn: '',
+        study_program_id: '',            // ⬅️ pastikan ada
         division: ''
       },
       roles: [
         { text: 'Pilih Jenis Akun', value: '' },
-        { text: 'Dosen Pembimbing', value: 'dosen' },
+        { text: 'Kaprodi', value: 'kaprodi' },
         { text: 'Perusahaan', value: 'perusahaan' }
       ],
       required: v => !!v || 'Wajib diisi',
@@ -218,104 +233,110 @@ export default {
         { title: 'Nama', value: 'name' },
         { title: 'Email', value: 'email' },
         { title: 'Jenis Akun', value: 'role' },
-        // { title: 'Institusi/Perusahaan', value: 'institution' },
         { title: 'Dibuat Pada', value: 'createdAt' },
         { title: 'Status', value: 'status', align: 'center' }
       ],
       recentAccounts: []
     }
   },
+
+  watch: {
+    // kalau universitas berganti (mode kaprodi) cukup reset pilihan prodi
+    'form.institution_id'() {
+      if (this.form.role === 'kaprodi') this.form.study_program_id = ''
+    },
+    // ketika role berganti, bersihkan field khusus
+    'form.role'(r) {
+      if (r !== 'kaprodi') { this.form.nidn = ''; this.form.study_program_id = '' }
+      if (r !== 'perusahaan') this.form.division = ''
+      this.form.institution_id = ''
+    }
+  },
+
   methods: {
     async fetchUniversities() {
-      try {
-        const { getUniversity } = useUniversityService()
-        const { data, error } = await getUniversity()
-        if (error.value) throw error.value
+      const { getUniversity } = useUniversityService()
+      const { data, error } = await getUniversity()
+      if (error.value) throw error.value
 
-        this.universityOptions = data.value.map(u => ({
-          title: u.name,
-          value: u.id
-        }))
-      } catch (err) {
-        console.error('Gagal fetch universitas:', err)
-        this.$store.dispatch('showSnackbar', {
-          text: 'Gagal memuat daftar universitas',
-          color: 'error'
-        })
-      }
+      // data.value bisa berupa array langsung ATAU { success, data: [...] }
+      const list = Array.isArray(data.value) ? data.value : (data.value?.data || [])
+      this.universityOptions = list.map(u => ({ title: u.name, value: u.id }))
     },
-    async fetchCompanies() {
-      try {
-        const { getCompanies } = useDataCompany()
-        const { data, error } = await getCompanies()
-        if (error.value) throw error.value
 
-        this.companyOptions = data.value.companies.map(c => ({
-          title: c.Name,
-          value: c.Id
+    async fetchCompanies() {
+      const { getCompanies } = useDataCompany()
+      const { data, error } = await getCompanies()
+      if (error.value) throw error.value
+      this.companyOptions = data.value.companies.map(c => ({ title: c.Name, value: c.Id }))
+    },
+
+    // ⬇️ NEW: ambil program studi dari useDataProdi.getProdis()
+    async loadProdis() {
+      this.prodiLoading = true
+      try {
+        const { prodis, getProdis } = useDataProdi()
+        await getProdis()
+        this.studyProgramOptions = (prodis.value || []).map(p => ({
+          title: p.name,
+          value: p.id
         }))
-      } catch (err) {
-        console.error('Gagal fetch perusahaan:', err)
-        this.$store.dispatch('showSnackbar', {
-          text: 'Gagal memuat daftar perusahaan',
-          color: 'error'
-        })
+      } finally {
+        this.prodiLoading = false
       }
     },
     async createAccount() {
-      if (this.$refs.accountForm.validate()) {
-        this.loading = true
-        const { addUser } = useCreateUserService()
+      const ok = await this.$refs.accountForm?.validate?.()
+      const valid = typeof ok === 'object' ? ok.valid : ok
+      if (!valid) return
 
-        const payload = {
-          name: this.form.name,
-          email: this.form.email,
-          phone: this.form.phone,
-          role_id: this.form.role === 'dosen' ? 4 : 2,
-          password: 'password123',
-          nidn: this.form.role === 'dosen' ? this.form.nidn : null,
-          university_id: this.form.role === 'dosen' ? this.form.institution_id : null,
-          company_id: this.form.role === 'perusahaan' ? this.form.institution_id : null,
-          division: this.form.role === 'perusahaan' ? this.form.division : null
-        }
+      this.loading = true
+      const { addUser } = useCreateUserService()
 
-        try {
-          const { data, error } = await addUser(payload)
-          if (error.value) throw error.value
+      const role_id = this.form.role === 'kaprodi' ? 5 : 2  // kaprodi=5, perusahaan=2
 
-          await this.loadUserCreations()
-          this.resetForm()
-          toast.success(`Akun user berhasil dibuat!`)
-        } catch (err) {
-          toast.error(`Akun user gagal dibuat.`)
-          console.error(err)
-        } finally {
-          this.loading = false
-        }
+      const payload = {
+        name: this.form.name,
+        email: this.form.email,
+        phone: this.form.phone,
+        role_id,
+        password: 'password123',
+        // kaprodi
+        nidn: this.form.role === 'kaprodi' ? this.form.nidn : null,
+        university_id: this.form.role === 'kaprodi' ? this.form.institution_id : null,
+        study_program_id: this.form.role === 'kaprodi' ? this.form.study_program_id : null,
+        // perusahaan
+        company_id: this.form.role === 'perusahaan' ? this.form.institution_id : null,
+        division: this.form.role === 'perusahaan' ? this.form.division : null
+      }
+
+      try {
+        const { data, error } = await addUser(payload)
+        if (error.value) throw error.value
+        await this.loadUserCreations()
+        this.resetForm()
+        toast.success('Akun user berhasil dibuat!')
+      } catch (e) {
+        toast.error('Akun user gagal dibuat.')
+        console.error(e)
+      } finally {
+        this.loading = false
       }
     },
+
     async loadUserCreations() {
-    try {
       const { getUserCreations } = useCreateUserService()
       const { data, error } = await getUserCreations()
       if (error.value) throw error.value
-
       this.recentAccounts = data.value.map(item => ({
         name: item.Name,
         email: item.Email,
-        role: item.RoleID === 4 ? 'dosen' : 'perusahaan',
-        // institution: item.InstitutionName || '-',
+        role: item.RoleID === 5 ? 'kaprodi' : 'perusahaan',
         createdAt: item.CreatedAt,
         status: 'active'
       }))
-    } catch (err) {
-      console.error('Gagal memuat log pembuatan user:', err)
-      this.$store.dispatch('showSnackbar', {
-        text: 'Gagal memuat log akun',
-        color: 'error'
-      })
-    }
-  },
+    },
+
     resetForm() {
       this.form = {
         role: '',
@@ -324,31 +345,33 @@ export default {
         phone: '',
         institution_id: '',
         nidn: '',
+        study_program_id: '',
         division: ''
       }
-      this.$refs.accountForm.resetValidation()
+      this.$refs.accountForm?.resetValidation?.()
     },
+
     formatDate(date) {
-      return new Date(date).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
+      return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
     }
   },
-  mounted() {
-    this.fetchUniversities()
-    this.fetchCompanies()
-    this.loadUserCreations()
+
+  async mounted() {
+    try {
+      await Promise.all([
+        this.fetchUniversities(),
+        this.fetchCompanies(),
+        this.loadProdis()          // ⬅️ load semua prodi sekali
+      ])
+      await this.loadUserCreations()
+    } catch (e) {
+      console.error(e)
+    }
   }
 }
 </script>
 
 <style scoped>
-.v-card {
-  transition: all 0.3s ease;
-}
-.v-card:hover {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1) !important;
-}
+.v-card { transition: all 0.3s ease; }
+.v-card:hover { box-shadow: 0 6px 12px rgba(0,0,0,.1) !important; }
 </style>

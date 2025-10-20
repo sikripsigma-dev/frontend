@@ -23,6 +23,7 @@
                 :prepend-inner-icon="field.icon"
                 :auto-grow="field.textarea || undefined"
                 :rows="field.textarea ? 3 : undefined"
+                :disabled="field.disabled || false"
               />
             </v-col>
           </v-row>
@@ -62,155 +63,217 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { useDataUser } from '@/composables/useDataUser';
+import { ref, computed, watch } from 'vue'
+import { useRuntimeConfig } from '#imports'
+import { useDataUser } from '@/composables/useDataUser'
 
-definePageMeta({
-  layout: 'profile',
-});
+definePageMeta({ layout: 'profile' })
 
-const { user, refresh } = useDataUser();
+const config = useRuntimeConfig()
+const { user, refresh } = useDataUser()
 
 const profile = ref({
-  name: '',
-  email: '',
-  phone: '',
+  // umum
+  name: '', email: '', phone: '',
+  // company
   division: '',
-  nim: '',
-  jurusan: '',
-  gpa: '',
-  university: '',
-  linkedin: '',
+  // student
+  nim: '', jurusan: '', gpa: '', university: '', linkedin: '', description: '',
+  // supervisor
   nidn: '',
-  description: '',
-});
+  // kaprodi
+  study_program: '', // tampilkan nama prodi (read-only di FE)
+})
 
-const originalProfile = ref({});
-const loadingSave = ref(false);
+const originalProfile = ref({})
+const loadingSave = ref(false)
 
 const snackbar = ref({
   visible: false,
   message: '',
   color: 'success',
   icon: 'mdi-check-circle',
-});
+})
 
-const role = computed(() => user.value?.role || 1);
+const role = computed(() => user.value?.role || 1)
 
-// Mapping field per role
+/** Field konfigurasi per role */
 const profileFieldsByRole = {
   1: [ // Admin
-    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
-    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
-    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
+    { key: 'name',  label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email', label: 'Email',        icon: 'mdi-email',  type: 'email' },
+    { key: 'phone', label: 'Nomor HP',     icon: 'mdi-phone' },
   ],
   2: [ // Company
-    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
-    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
-    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
-    { key: 'division', label: 'Divisi', icon: 'mdi-office-building' },
+    { key: 'name',     label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email',    label: 'Email',        icon: 'mdi-email',  type: 'email' },
+    { key: 'phone',    label: 'Nomor HP',     icon: 'mdi-phone' },
+    { key: 'division', label: 'Divisi',       icon: 'mdi-office-building' },
   ],
   3: [ // Student
-    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
-    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
-    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
-    { key: 'nim', label: 'NIM', icon: 'mdi-card-account-details' },
-    { key: 'jurusan', label: 'Program Studi', icon: 'mdi-book-open' },
-    { key: 'gpa', label: 'IPK', icon: 'mdi-star-circle' },
-    { key: 'university', label: 'Universitas/Institusi', icon: 'mdi-school' },
-    { key: 'linkedin', label: 'Linkedin', icon: 'mdi-linkedin' },
-    { key: 'description', label: 'Deskripsi Diri', icon: 'mdi-text', textarea: true },
+    { key: 'name',        label: 'Nama Lengkap',           icon: 'mdi-account' },
+    { key: 'email',       label: 'Email',                  icon: 'mdi-email',  type: 'email' },
+    { key: 'phone',       label: 'Nomor HP',               icon: 'mdi-phone' },
+    { key: 'nim',         label: 'NIM',                    icon: 'mdi-card-account-details' },
+    { key: 'jurusan',     label: 'Program Studi',          icon: 'mdi-book-open' },
+    { key: 'gpa',         label: 'IPK',                    icon: 'mdi-star-circle' },
+    { key: 'university',  label: 'Universitas/Institusi',  icon: 'mdi-school' },
+    { key: 'linkedin',    label: 'LinkedIn',               icon: 'mdi-linkedin' },
+    { key: 'description', label: 'Deskripsi Diri',         icon: 'mdi-text', textarea: true },
   ],
   4: [ // Supervisor
-    { key: 'name', label: 'Nama Lengkap', icon: 'mdi-account' },
-    { key: 'email', label: 'Email', icon: 'mdi-email', type: 'email' },
-    { key: 'phone', label: 'Nomor HP', icon: 'mdi-phone' },
-    { key: 'nidn', label: 'NIDN', icon: 'mdi-card-account-details' },
+    { key: 'name',  label: 'Nama Lengkap', icon: 'mdi-account' },
+    { key: 'email', label: 'Email',        icon: 'mdi-email',  type: 'email' },
+    { key: 'phone', label: 'Nomor HP',     icon: 'mdi-phone' },
+    { key: 'nidn',  label: 'NIDN',         icon: 'mdi-card-account-details' },
   ],
-};
+  5: [ // Kaprodi
+    { key: 'name',          label: 'Nama Lengkap',           icon: 'mdi-account' },
+    { key: 'email',         label: 'Email',                  icon: 'mdi-email',  type: 'email' },
+    { key: 'phone',         label: 'Nomor HP',               icon: 'mdi-phone' },
+    { key: 'nidn',          label: 'NIDN',                   icon: 'mdi-card-account-details' },
+    { key: 'university',    label: 'Universitas',            icon: 'mdi-school',      disabled: true },
+    { key: 'study_program', label: 'Program Studi (Prodi)',  icon: 'mdi-book-open',   disabled: true },
+  ],
+}
 
-const fieldsToShow = computed(() => profileFieldsByRole[role.value] || []);
+const fieldsToShow = computed(() => profileFieldsByRole[role.value] || [])
 
+/** Prefill dari /api/me */
 const initProfile = (userData) => {
   const base = {
-    name: userData.name || '',
+    name:  userData.name  || '',
     email: userData.email || '',
     phone: userData.phone || '',
-  };
+  }
 
   switch (userData.role) {
     case 2: // company
       Object.assign(profile.value, {
         ...base,
         division: userData.company?.division || '',
-      });
-      break;
+      })
+      break
     case 3: // student
       Object.assign(profile.value, {
         ...base,
-        nim: userData.Student?.nim || '',
-        jurusan: userData.Student?.jurusan || '',
-        gpa: userData.Student?.gpa || '',
-        university: userData.Student?.univ_name || '',
-        linkedin: userData.Student?.linkedin || '',
+        nim:         userData.Student?.nim || '',
+        jurusan:     userData.Student?.jurusan || '',
+        gpa:         userData.Student?.gpa || '',
+        university:  userData.Student?.univ_name || '',
+        linkedin:    userData.Student?.linkedin || '',
         description: userData.description || '',
-      });
-      break;
+      })
+      break
     case 4: // supervisor
       Object.assign(profile.value, {
         ...base,
         nidn: userData.Supervisor?.nidn || '',
-      });
-      break;
-    default:
-      Object.assign(profile.value, base);
+      })
+      break
+    case 5: // kaprodi
+      Object.assign(profile.value, {
+        ...base,
+        nidn:          userData.Headstudy?.nidn || '',
+        university:    userData.Headstudy?.univ_name || '',
+        study_program: userData.Headstudy?.study_program_name || '',
+      })
+      break
+    default: // admin / unknown
+      Object.assign(profile.value, base)
   }
 
-  originalProfile.value = JSON.parse(JSON.stringify(profile.value));
-};
+  originalProfile.value = JSON.parse(JSON.stringify(profile.value))
+}
 
 watch(
   () => user.value,
-  (userData) => {
-    if (userData) {
-      initProfile(userData);
-    }
-  },
+  (u) => { if (u) initProfile(u) },
   { immediate: true }
-);
+)
 
-const isProfileChanged = computed(() => {
-  return JSON.stringify(profile.value) !== JSON.stringify(originalProfile.value);
-});
+const isProfileChanged = computed(() =>
+  JSON.stringify(profile.value) !== JSON.stringify(originalProfile.value)
+)
 
+/** Kirim payload sesuai role */
 const saveProfile = async () => {
-  loadingSave.value = true;
+  loadingSave.value = true
   try {
-    const config = useRuntimeConfig();
+    let payload = {}
+
+    switch (role.value) {
+      case 2: // company
+        payload = {
+          name: profile.value.name,
+          email: profile.value.email,
+          phone: profile.value.phone,
+          division: profile.value.division,
+        }
+        break
+      case 3: // student
+        payload = {
+          name: profile.value.name,
+          email: profile.value.email,
+          phone: profile.value.phone,
+          nim: profile.value.nim,
+          jurusan: profile.value.jurusan,
+          gpa: profile.value.gpa,
+          university: profile.value.university, // FE hanya string label; BE-mu pakai ID pada endpoint khusus — ini diabaikan jika tak dipakai
+          linkedin: profile.value.linkedin,
+          description: profile.value.description,
+        }
+        break
+      case 4: // supervisor
+        payload = {
+          name: profile.value.name,
+          email: profile.value.email,
+          phone: profile.value.phone,
+          nidn: profile.value.nidn,
+        }
+        break
+      case 5: // kaprodi
+        payload = {
+          name: profile.value.name,
+          email: profile.value.email,
+          phone: profile.value.phone,
+          nidn: profile.value.nidn,
+          // university & study_program read-only di FE, diatur admin
+        }
+        break
+      default: // admin
+        payload = {
+          name: profile.value.name,
+          email: profile.value.email,
+          phone: profile.value.phone,
+        }
+    }
+
     await $fetch(`${config.public.apiBase}/api/profile`, {
       method: 'PUT',
-      body: profile.value,
+      body: payload,
       credentials: 'include',
-    });
-    originalProfile.value = JSON.parse(JSON.stringify(profile.value));
+    })
+
+    originalProfile.value = JSON.parse(JSON.stringify(profile.value))
     snackbar.value = {
       visible: true,
       message: 'Profil berhasil diperbarui!',
       color: 'success',
       icon: 'mdi-check-circle',
-    };
-    refresh();
+    }
+    refresh()
   } catch (err) {
     snackbar.value = {
       visible: true,
       message: 'Gagal memperbarui profil!',
       color: 'error',
       icon: 'mdi-alert-circle',
-    };
+    }
   } finally {
-    loadingSave.value = false;
+    loadingSave.value = false
   }
-};
+}
 </script>
 
 <style scoped>
